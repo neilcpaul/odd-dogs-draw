@@ -77,14 +77,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "Odd Dogs: World Cup 2026" },
+      { name: "description", content: "Track FIFA World Cup 2026 sweepstakes for 12 players with live score updates and dynamic leaderboards." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "Odd Dogs: World Cup 2026" },
+      { property: "og:description", content: "Track FIFA World Cup 2026 sweepstakes for 12 players with live score updates and dynamic leaderboards." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Odd Dogs: World Cup 2026" },
+      { name: "twitter:description", content: "Track FIFA World Cup 2026 sweepstakes for 12 players with live score updates and dynamic leaderboards." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/41a9915e-50e7-4f4f-8faf-403084819f81/id-preview-78febe97--558b7db4-28d0-48c3-a3b6-e96d945f0356.lovable.app-1780957228056.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/41a9915e-50e7-4f4f-8faf-403084819f81/id-preview-78febe97--558b7db4-28d0-48c3-a3b6-e96d945f0356.lovable.app-1780957228056.png" },
     ],
     links: [
       {
