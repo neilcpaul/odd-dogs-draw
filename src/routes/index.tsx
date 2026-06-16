@@ -453,133 +453,86 @@ function PlayersTab() {
 
 function WildcardsTab() {
   const state = useAppState();
-  const [playerName, setPlayerName] = useState<string>(PLAYERS[0].name);
-  const [pot, setPot] = useState<"3" | "4">("3");
-  const [matchId, setMatchId] = useState<string>("");
-  const [confirmOpen, setConfirmOpen] = useState(false);
-
-  const player = PLAYERS.find((p) => p.name === playerName)!;
-  const teamForPot = player.teams.find((t) => t.pot === Number(pot))!.team;
-  const used = state.wildcards[playerName] ?? [];
-  const alreadyUsed = used.find((u) => u.pot === Number(pot));
-
-  const availableMatches = useMemo(() => {
-    return GROUP_MATCHES
-      .filter((m) => m.home === teamForPot || m.away === teamForPot)
-      .filter((m) => !state.scores[m.id]?.played)
-      .filter((m) => new Date(m.date).getTime() > Date.now() - 1000 * 60 * 60);
-  }, [teamForPot, state]);
-
-  function commit() {
-    if (!matchId) return;
-    useWildcard(playerName, Number(pot) as 3 | 4, matchId);
-    setConfirmOpen(false);
-    setMatchId("");
-  }
 
   return (
-    <div className="grid lg:grid-cols-[1fr_1.2fr] gap-6">
-      <Card className="p-5 bg-card border-border">
-        <h2 className="text-lg font-bold mb-4">Play a wildcard</h2>
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs text-muted-foreground">Player</label>
-            <Select value={playerName} onValueChange={(v) => { setPlayerName(v); setMatchId(""); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {PLAYERS.map((p) => <SelectItem key={p.name} value={p.name}>{p.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground">Wildcard</label>
-            <Select value={pot} onValueChange={(v) => { setPot(v as "3" | "4"); setMatchId(""); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="3">Pot 3 — {player.teams.find((t) => t.pot === 3)!.team}</SelectItem>
-                <SelectItem value="4">Pot 4 — {player.teams.find((t) => t.pot === 4)!.team}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {alreadyUsed ? (
-            <div className="rounded-md bg-muted/40 p-3 text-sm">
-              This wildcard was already used on match <span className="font-mono">{alreadyUsed.matchId}</span>.
-            </div>
-          ) : (
-            <>
-              <div>
-                <label className="text-xs text-muted-foreground">Group stage match (must be upcoming)</label>
-                <Select value={matchId} onValueChange={setMatchId}>
-                  <SelectTrigger><SelectValue placeholder="Choose a match" /></SelectTrigger>
-                  <SelectContent>
-                    {availableMatches.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {fmtDate(m.date)} · {m.home} vs {m.away}
-                      </SelectItem>
-                    ))}
-                    {availableMatches.length === 0 && <SelectItem value="none" disabled>No upcoming matches</SelectItem>}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button className="w-full" disabled={!matchId} onClick={() => setConfirmOpen(true)}>
-                Use wildcard
-              </Button>
-            </>
-          )}
-        </div>
+    <div className="space-y-4">
+      <Card className="p-4 bg-card border-border">
+        <h2 className="text-lg font-bold mb-1">Pre-assigned wildcards</h2>
+        <p className="text-xs text-muted-foreground">
+          Each player has 2 wildcards: one on a Pot 3 team's group match, one on a Pot 4 team's group match.
+          The chosen match's points are doubled automatically once it finishes. Assignments are locked.
+        </p>
       </Card>
 
-      <Card className="p-5 bg-card border-border">
-        <h2 className="text-lg font-bold mb-4">All wildcard statuses</h2>
-        <div className="grid sm:grid-cols-2 gap-2">
-          {PLAYERS.map((p) => {
-            const u = state.wildcards[p.name] ?? [];
-            const pot3 = u.find((x) => x.pot === 3);
-            const pot4 = u.find((x) => x.pot === 4);
-            return (
-              <div key={p.name} className="rounded-md bg-secondary/40 p-3">
-                <div className="font-bold mb-1">{p.name}</div>
-                <div className="flex flex-col gap-1 text-[11px]">
-                  <WildcardStatusRow label="P3" team={p.teams.find((t) => t.pot === 3)!.team} use={pot3} />
-                  <WildcardStatusRow label="P4" team={p.teams.find((t) => t.pot === 4)!.team} use={pot4} />
-                </div>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {PLAYERS.map((p) => {
+          const assign = WILDCARD_ASSIGNMENTS[p.name];
+          const used = state.wildcards[p.name] ?? [];
+          const pot3Team = p.teams.find((t) => t.pot === 3)!.team;
+          const pot4Team = p.teams.find((t) => t.pot === 4)!.team;
+          return (
+            <Card key={p.name} className="p-4 bg-card border-border">
+              <div className="font-black text-base mb-2">{p.name}</div>
+              <div className="space-y-2">
+                <WildcardRow
+                  pot={3}
+                  team={pot3Team}
+                  pair={assign?.pot3}
+                  matchId={used.find((u) => u.pot === 3)?.matchId}
+                />
+                <WildcardRow
+                  pot={4}
+                  team={pot4Team}
+                  pair={assign?.pot4}
+                  matchId={used.find((u) => u.pot === 4)?.matchId}
+                />
               </div>
-            );
-          })}
-        </div>
-      </Card>
-
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm wildcard</AlertDialogTitle>
-            <AlertDialogDescription>
-              Use {playerName}'s Pot {pot} wildcard ({teamForPot}) on this match? This is permanent — the wildcard cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={commit}>Confirm</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-function WildcardStatusRow({ label, team, use }: { label: string; team: string; use?: { matchId: string } }) {
-  const match = use ? ALL_MATCHES.find((m) => m.id === use.matchId) : undefined;
+function WildcardRow({
+  pot, team, pair, matchId,
+}: {
+  pot: 3 | 4;
+  team: string;
+  pair?: [string, string];
+  matchId?: string;
+}) {
+  const match = matchId ? ALL_MATCHES.find((m) => m.id === matchId) : undefined;
+  const score = match ? getState().scores[match.id] : undefined;
+  const played = !!score?.played;
   return (
-    <div className="flex items-center justify-between gap-1">
-      <span className="text-muted-foreground">{label} · {TEAMS[team]?.flag} {team}</span>
-      {use ? (
-        <span className="text-primary">used {match ? `· ${fmtDate(match.date)}` : ""}</span>
+    <div className="rounded-md bg-secondary/40 p-2.5 text-xs">
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span className="flex items-center gap-1.5">
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${pot === 3 ? "bg-[var(--pot3)] text-[#1a1100]" : "bg-[var(--pot4)] text-white"}`}>P{pot}</span>
+          <span className="font-semibold">{TEAMS[team]?.flag} {team}</span>
+        </span>
+        <span className={`px-1.5 py-0.5 rounded font-bold text-[10px] ${played ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+          {played ? "DOUBLED ✓" : "pending"}
+        </span>
+      </div>
+      {pair && match ? (
+        <div className="text-muted-foreground">
+          {pair[0]} vs {pair[1]} · {fmtDate(match.date)}
+          {played && score && (
+            <span className="ml-1 text-primary font-bold">
+              · {score.home}–{score.away}
+            </span>
+          )}
+        </div>
       ) : (
-        <span className="px-1.5 py-0.5 rounded bg-primary text-primary-foreground font-bold">available</span>
+        <div className="text-destructive">Match not found in fixtures.</div>
       )}
     </div>
   );
 }
+
 
 /* ---------------- BRACKET ---------------- */
 
