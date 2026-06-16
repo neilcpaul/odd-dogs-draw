@@ -78,6 +78,36 @@ export function setScore(matchId: string, home: number, away: number, played: bo
   emit();
 }
 
+// Bulk set/replace scores in one emit — used by the API poller to avoid
+// triggering 30+ re-renders per refresh.
+export function bulkSetScores(
+  updates: Array<{ id: string; home: number; away: number; played: boolean }>,
+) {
+  if (updates.length === 0) return;
+  const next = { ...state.scores };
+  let changed = false;
+  for (const u of updates) {
+    const cur = next[u.id];
+    if (!cur || cur.home !== u.home || cur.away !== u.away || cur.played !== u.played) {
+      next[u.id] = { home: u.home, away: u.away, played: u.played };
+      changed = true;
+    }
+  }
+  if (!changed) return;
+  state = { ...state, scores: next };
+  emit();
+}
+
+// Replace the entire wildcards map (used to apply pre-assigned wildcards on init).
+export function setAllWildcards(wildcards: Record<string, WildcardUse[]>) {
+  // Avoid an unnecessary emit if nothing actually changed.
+  const cur = JSON.stringify(state.wildcards);
+  const nxt = JSON.stringify(wildcards);
+  if (cur === nxt) return;
+  state = { ...state, wildcards };
+  emit();
+}
+
 export function clearScore(matchId: string) {
   const { [matchId]: _, ...rest } = state.scores;
   state = { ...state, scores: rest };
