@@ -126,7 +126,7 @@ interface ApiMatch {
 async function fetchJson<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}/${path}`, { cache: "no-store", headers:
         {
-            "Access-Control-Allow-Origin":"*",
+            "Access-Control-Allow-Origin": "https://odd-dogs-draw.lovable.app",
             "Access-Control-Allow-Methods": "HEAD, GET, POST, PUT, PATCH, DELETE",
             "Access-Control-Allow-Headers": "Origin, Content-Type, X-Auth-Token"
         } });
