@@ -7,8 +7,7 @@ import {
 } from "@/lib/wc-data";
 import {
   computeAllTotals, effectiveTeams, getState, isTeamEliminated, nextUpcoming,
-  pointsForMatch, recentResults, setKnockoutSlot, setScore, useAppState,
-  useWildcard,
+  recentResults, setKnockoutSlot, setScore, useAppState,
 } from "@/lib/wc-store";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
