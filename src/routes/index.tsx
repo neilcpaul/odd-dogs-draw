@@ -116,7 +116,7 @@ function LocalTime({ iso }: { iso: string }) {
   );
 }
 
-}
+
 
 function App() {
   useAppState();
