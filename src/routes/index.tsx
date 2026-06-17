@@ -53,12 +53,10 @@ function TeamChip({ team, showOwner = false }: { team: string; showOwner?: boole
   );
 }
 
-function fmtDate(iso: string) {
-  // Source dates are ET (UTC-4). Convert to UK time and format manually so
-  // server and client always produce the exact same string.
+function formatDate(iso: string, timeZone: string): string {
   const d = new Date(iso);
   const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/London",
+    timeZone,
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -78,7 +76,15 @@ function fmtDate(iso: string) {
     if (part.type === "minute") minute = part.value;
     if (part.type === "dayPeriod") dayPeriod = part.value.toLowerCase();
   }
-  return `${day} ${month}, ${hour}:${minute} ${dayPeriod} UK`;
+  return `${day} ${month}, ${hour}:${minute} ${dayPeriod}`;
+}
+
+function LocalTime({ iso }: { iso: string }) {
+  const [formatted, setFormatted] = useState<string | null>(null);
+  useEffect(() => {
+    setFormatted(formatDate(iso, Intl.DateTimeFormat().resolvedOptions().timeZone));
+  }, [iso]);
+  return <span>{formatted ?? formatDate(iso, "America/New_York")}</span>;
 }
 
 function App() {
@@ -261,7 +267,7 @@ function MiniFixture({ match }: { match: Match }) {
   const e = effectiveTeams(match);
   return (
     <div className="rounded-md bg-secondary/40 px-3 py-2 text-sm">
-      <div className="text-[10px] text-muted-foreground mb-0.5">{fmtDate(match.date)} · {match.city}</div>
+      <div className="text-[10px] text-muted-foreground mb-0.5"><LocalTime iso={match.date} /> · {match.city}</div>
       <div className="flex items-center justify-between">
         <TeamChip team={e.home} />
         <span className="text-muted-foreground text-xs">vs</span>
@@ -276,7 +282,7 @@ function MiniResult({ match }: { match: Match }) {
   const e = effectiveTeams(match);
   return (
     <div className="rounded-md bg-secondary/40 px-3 py-2 text-sm">
-      <div className="text-[10px] text-muted-foreground mb-0.5">{fmtDate(match.date)}</div>
+      <div className="text-[10px] text-muted-foreground mb-0.5"><LocalTime iso={match.date} /></div>
       <div className="flex items-center justify-between">
         <TeamChip team={e.home} />
         <span className="font-black text-primary tabular-nums">{s?.home ?? 0}–{s?.away ?? 0}</span>
@@ -377,7 +383,7 @@ function FixtureRow({ match }: { match: Match }) {
       <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-2 gap-2">
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="border-primary/40 text-primary">{stageLabel}</Badge>
-          <span>{fmtDate(match.date)}</span>
+          <span><LocalTime iso={match.date} /></span>
           <span className="hidden sm:inline">· {match.venue}, {match.city}</span>
           {ukTv && match.stage === "group" && (
             <span className="hidden md:inline">· 📺 UK: {ukTv}</span>
@@ -583,7 +589,7 @@ function WildcardRow({
       </div>
       {pair && match ? (
         <div className="text-muted-foreground">
-          {pair[0]} vs {pair[1]} · {fmtDate(match.date)}
+          {pair[0]} vs {pair[1]} · <LocalTime iso={match.date} />
           {played && score && (
             <span className="ml-1 text-primary font-bold">
               · {score.home}–{score.away}
@@ -689,7 +695,7 @@ function KnockoutSlot({ match }: { match: Match }) {
 
   return (
     <div className="rounded-md bg-secondary/40 p-2 space-y-1.5">
-      <div className="text-[10px] text-muted-foreground">{fmtDate(match.date)} · {match.city}</div>
+      <div className="text-[10px] text-muted-foreground"><LocalTime iso={match.date} /> · {match.city}</div>
       <SlotRow team={e.home} onChange={(t) => setKnockoutSlot(match.id, "home", t)} allTeams={allTeams} />
       <SlotRow team={e.away} onChange={(t) => setKnockoutSlot(match.id, "away", t)} allTeams={allTeams} />
       {e.home && e.away && (
