@@ -310,5 +310,3 @@ function TeamFixture({ match, team }: { match: Match; team: string }) {
   );
 }
 
-  );
-}
