@@ -54,16 +54,16 @@ function TeamChip({ team, showOwner = false }: { team: string; showOwner?: boole
 }
 
 function fmtDate(iso: string) {
-  // Fixed locale + timezone so SSR and client agree.
+  // Source dates are ET (UTC-4). Convert to UK time for the Odd Dogs audience.
   const d = new Date(iso);
-  return d.toLocaleString("en-US", {
-    timeZone: "America/New_York",
+  return d.toLocaleString("en-GB", {
+    timeZone: "Europe/London",
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-  }) + " ET";
+  }) + " UK";
 }
 
 function App() {
