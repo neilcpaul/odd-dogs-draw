@@ -54,16 +54,31 @@ function TeamChip({ team, showOwner = false }: { team: string; showOwner?: boole
 }
 
 function fmtDate(iso: string) {
-  // Source dates are ET (UTC-4). Convert to UK time for the Odd Dogs audience.
+  // Source dates are ET (UTC-4). Convert to UK time and format manually so
+  // server and client always produce the exact same string.
   const d = new Date(iso);
-  return d.toLocaleString("en-GB", {
+  const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/London",
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-  }) + " UK";
+  }).formatToParts(d);
+
+  let month = "";
+  let day = "";
+  let hour = "";
+  let minute = "";
+  let dayPeriod = "";
+  for (const part of parts) {
+    if (part.type === "month") month = part.value;
+    if (part.type === "day") day = part.value;
+    if (part.type === "hour") hour = part.value;
+    if (part.type === "minute") minute = part.value;
+    if (part.type === "dayPeriod") dayPeriod = part.value.toLowerCase();
+  }
+  return `${day} ${month}, ${hour}:${minute} ${dayPeriod} UK`;
 }
 
 function App() {
