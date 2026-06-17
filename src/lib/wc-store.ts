@@ -43,7 +43,7 @@ function load(): AppState {
   }
 }
 
-let state: AppState = load();
+let state: AppState = { scores: {}, knockoutSlots: {}, wildcards: {} };
 const listeners = new Set<() => void>();
 
 function emit() {
