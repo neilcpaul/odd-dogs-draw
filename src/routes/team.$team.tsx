@@ -283,6 +283,32 @@ function TeamFixture({ match, team }: { match: Match; team: string }) {
           {played ? `${my}–${op}` : <span className="text-muted-foreground text-xs font-normal">Scheduled</span>}
         </div>
       </div>
+      {!played && opponent && (() => {
+        const wp = winProbability(team, opponent);
+        if (!wp) return null;
+        const fmt = (n: number) => `${Math.round(n * 100)}%`;
+        return (
+          <div className="mt-2 pt-2 border-t border-border/50">
+            <div className="flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
+              <span>Win probability</span>
+              <span className="normal-case tracking-normal">Pot-based model</span>
+            </div>
+            <div className="flex h-2 rounded-full overflow-hidden bg-secondary">
+              <div className="bg-emerald-500" style={{ width: `${wp.win * 100}%` }} />
+              <div className="bg-amber-400" style={{ width: `${wp.draw * 100}%` }} />
+              <div className="bg-destructive" style={{ width: `${wp.loss * 100}%` }} />
+            </div>
+            <div className="flex justify-between text-[11px] mt-1 tabular-nums">
+              <span className="text-emerald-500 font-semibold">Win {fmt(wp.win)}</span>
+              <span className="text-amber-400 font-semibold">Draw {fmt(wp.draw)}</span>
+              <span className="text-destructive font-semibold">Loss {fmt(wp.loss)}</span>
+            </div>
+          </div>
+        );
+      })()}
     </div>
+  );
+}
+
   );
 }
