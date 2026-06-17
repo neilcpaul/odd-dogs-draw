@@ -260,19 +260,21 @@ export function isTeamEliminated(team: string): boolean {
 export function nextUpcoming(n: number): Match[] {
   const now = Date.now();
   return ALL_MATCHES
-    .filter((m) => !state.scores[m.id]?.played)
     .filter((m) => {
       const { home, away } = effectiveTeams(m);
       return home && away;
     })
-    .sort((a, b) => a.date.localeCompare(b.date))
     .filter((m) => new Date(m.date).getTime() >= now - 1000 * 60 * 60 * 2)
+    .filter((m) => !state.scores[m.id]?.played)
+    .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, n);
 }
 
 export function recentResults(n: number): Match[] {
+  const now = Date.now();
   return ALL_MATCHES
     .filter((m) => state.scores[m.id]?.played)
+    .filter((m) => new Date(m.date).getTime() <= now)
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, n);
 }
