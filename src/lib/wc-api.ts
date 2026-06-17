@@ -1,17 +1,23 @@
-// wheniskickoff.com API integration: fetches live match data, applies scores,
-// resolves pre-assigned wildcards to real match IDs, and exposes API meta state
-// (offline status, live match IDs, UK TV channels) to the UI.
+// Live match data: fetches openfootball/worldcup.json from GitHub raw,
+// normalises team names, applies scores, resolves pre-assigned wildcards,
+// and exposes API meta state (offline status, live match IDs, UK TV channels).
+// Falls back to STATIC_MATCH_API_DATA when the live fetch fails.
 
 import { useSyncExternalStore } from "react";
 import { GROUP_MATCHES, PLAYERS, STATIC_MATCH_API_DATA, type MatchData } from "./wc-data";
 import { bulkSetScores, setAllWildcards, type WildcardUse } from "./wc-store";
 
-const BASE = "https://wheniskickoff.com/data/v1";
+const OPENFOOTBALL_URL =
+  "https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json";
 
 // API name → canonical app name (only when they differ).
 const NAME_MAP: Record<string, string> = {
   "Turkey": "Türkiye",
   "Türkiye": "Türkiye",
+  "USA": "United States",
+  "United States": "United States",
+  "Czech Republic": "Czechia",
+  "Czechia": "Czechia",
   "Ivory Coast": "Côte d'Ivoire",
   "Côte d'Ivoire": "Côte d'Ivoire",
   "Bosnia-Herzegovina": "Bosnia & Herzegovina",
