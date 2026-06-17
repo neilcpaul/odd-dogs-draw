@@ -71,6 +71,7 @@ function App() {
   const apiMeta = useApiMeta();
   const [tab, setTab] = useState("dashboard");
   const [refreshing, setRefreshing] = useState(false);
+  const [focusPlayer, setFocusPlayer] = useState<string | null>(null);
 
   useEffect(() => { initApi(); }, []);
 
@@ -78,6 +79,11 @@ function App() {
     if (refreshing) return;
     setRefreshing(true);
     try { await fetchAndApply(); } finally { setRefreshing(false); }
+  };
+
+  const goToPlayer = (name: string) => {
+    setFocusPlayer(name);
+    setTab("players");
   };
 
   return (
@@ -134,9 +140,9 @@ function App() {
             <TabsTrigger value="wildcards">Wildcards</TabsTrigger>
             <TabsTrigger value="bracket">Bracket</TabsTrigger>
           </TabsList>
-          <TabsContent value="dashboard" className="mt-6"><Dashboard /></TabsContent>
+          <TabsContent value="dashboard" className="mt-6"><Dashboard onSelectPlayer={goToPlayer} /></TabsContent>
           <TabsContent value="fixtures" className="mt-6"><Fixtures /></TabsContent>
-          <TabsContent value="players" className="mt-6"><PlayersTab /></TabsContent>
+          <TabsContent value="players" className="mt-6"><PlayersTab focusPlayer={focusPlayer} onConsumeFocus={() => setFocusPlayer(null)} /></TabsContent>
           <TabsContent value="wildcards" className="mt-6"><WildcardsTab /></TabsContent>
           <TabsContent value="bracket" className="mt-6"><Bracket /></TabsContent>
         </Tabs>
