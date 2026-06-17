@@ -6,8 +6,8 @@ import {
   PLAYERS, POT_LABEL_CLASS, TEAMS, teamGroup, teamOwner, type Match, type Pot,
 } from "@/lib/wc-data";
 import {
-  computeAllTotals, effectiveTeams, getState, isTeamEliminated, nextUpcoming,
-  recentResults, setKnockoutSlot, setScore, useAppState,
+  computeAllTotals, effectiveTeams, getState, isTeamEliminated, loadFromStorage,
+  nextUpcoming, recentResults, setKnockoutSlot, setScore, useAppState,
 } from "@/lib/wc-store";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
