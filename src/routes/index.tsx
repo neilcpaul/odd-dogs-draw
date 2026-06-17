@@ -53,12 +53,10 @@ function TeamChip({ team, showOwner = false }: { team: string; showOwner?: boole
   );
 }
 
-function fmtDate(iso: string) {
-  // Source dates are ET (UTC-4). Convert to UK time and format manually so
-  // server and client always produce the exact same string.
+function formatDate(iso: string, timeZone: string): string {
   const d = new Date(iso);
   const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/London",
+    timeZone,
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -78,7 +76,15 @@ function fmtDate(iso: string) {
     if (part.type === "minute") minute = part.value;
     if (part.type === "dayPeriod") dayPeriod = part.value.toLowerCase();
   }
-  return `${day} ${month}, ${hour}:${minute} ${dayPeriod} UK`;
+  return `${day} ${month}, ${hour}:${minute} ${dayPeriod}`;
+}
+
+function LocalTime({ iso }: { iso: string }) {
+  const [formatted, setFormatted] = useState<string | null>(null);
+  useEffect(() => {
+    setFormatted(formatDate(iso, Intl.DateTimeFormat().resolvedOptions().timeZone));
+  }, [iso]);
+  return <span>{formatted ?? formatDate(iso, "America/New_York")}</span>;
 }
 
 function App() {
