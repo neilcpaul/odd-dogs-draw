@@ -43,7 +43,7 @@ function load(): AppState {
   }
 }
 
-let state: AppState = load();
+let state: AppState = { scores: {}, knockoutSlots: {}, wildcards: {} };
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -56,6 +56,11 @@ function emit() {
 export function subscribe(l: () => void) {
   listeners.add(l);
   return () => listeners.delete(l);
+}
+
+export function loadFromStorage(): void {
+  state = load();
+  emit();
 }
 
 export function getState(): AppState {
