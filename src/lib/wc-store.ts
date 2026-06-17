@@ -58,6 +58,11 @@ export function subscribe(l: () => void) {
   return () => listeners.delete(l);
 }
 
+export function loadFromStorage(): void {
+  state = load();
+  emit();
+}
+
 export function getState(): AppState {
   return state;
 }
