@@ -17,6 +17,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Trophy, Download, Flame, Calendar, RefreshCw } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -329,6 +331,8 @@ function Fixtures() {
   const [stage, setStage] = useState<string>("all");
   const [player, setPlayer] = useState<string>("all");
   const [team, setTeam] = useState<string>("all");
+  const [showCompleted, setShowCompleted] = useState(false);
+  const state = getState();
 
   const filtered = useMemo(() => {
     return ALL_MATCHES.filter((m) => {
@@ -340,9 +344,10 @@ function Fixtures() {
         const ownerA = teamOwner(e.away);
         if (ownerH !== player && ownerA !== player) return false;
       }
+      if (!showCompleted && state.scores[m.id]?.played) return false;
       return true;
     });
-  }, [stage, player, team]);
+  }, [stage, player, team, showCompleted]);
 
   return (
     <div>
@@ -376,6 +381,16 @@ function Fixtures() {
             ))}
           </SelectContent>
         </Select>
+      </div>
+      <div className="flex items-center gap-2 mb-4">
+        <Switch
+          id="show-completed"
+          checked={showCompleted}
+          onCheckedChange={setShowCompleted}
+        />
+        <Label htmlFor="show-completed" className="text-sm cursor-pointer">
+          Show completed fixtures
+        </Label>
       </div>
       <div className="space-y-2">
         {filtered.map((m) => <FixtureRow key={m.id} match={m} />)}
