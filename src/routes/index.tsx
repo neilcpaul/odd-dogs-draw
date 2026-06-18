@@ -331,6 +331,8 @@ function Fixtures() {
   const [stage, setStage] = useState<string>("all");
   const [player, setPlayer] = useState<string>("all");
   const [team, setTeam] = useState<string>("all");
+  const [showCompleted, setShowCompleted] = useState(false);
+  const state = getState();
 
   const filtered = useMemo(() => {
     return ALL_MATCHES.filter((m) => {
@@ -342,9 +344,10 @@ function Fixtures() {
         const ownerA = teamOwner(e.away);
         if (ownerH !== player && ownerA !== player) return false;
       }
+      if (!showCompleted && state.scores[m.id]?.played) return false;
       return true;
     });
-  }, [stage, player, team]);
+  }, [stage, player, team, showCompleted]);
 
   return (
     <div>
