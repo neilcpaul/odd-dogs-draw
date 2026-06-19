@@ -144,6 +144,7 @@ function App() {
   };
 
   return (
+    <MatchDetailProvider>
     <div className="min-h-screen text-foreground">
       <header className="border-b border-border bg-card/60 backdrop-blur sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-3">
