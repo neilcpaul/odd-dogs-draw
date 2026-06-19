@@ -130,7 +130,7 @@ function App() {
   const [refreshing, setRefreshing] = useState(false);
   const [focusPlayer, setFocusPlayer] = useState<string | null>(null);
 
-  useEffect(() => { loadFromStorage(); initApi(); }, []);
+  useEffect(() => { loadFromStorage(); initApi(); initLive(); }, []);
 
   const handleRefresh = async () => {
     if (refreshing) return;
