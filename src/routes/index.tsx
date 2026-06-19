@@ -315,12 +315,34 @@ function Dashboard({ onSelectPlayer }: { onSelectPlayer: (name: string) => void 
 
 function MiniFixture({ match }: { match: Match }) {
   const e = effectiveTeams(match);
+  const live = useLiveMatch(match.id);
+  const isLive = live?.liveStatus === "LIVE";
+  const { open } = useMatchDetail();
   return (
-    <div className="rounded-md bg-secondary/40 px-3 py-2 text-sm">
-      <div className="text-[10px] text-muted-foreground mb-0.5"><LocalTime iso={match.date} /> · {match.city}</div>
-      <div className="flex items-center justify-between">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => open(match.id)}
+      onKeyDown={(ev) => { if (ev.key === "Enter") open(match.id); }}
+      className="rounded-md bg-secondary/40 px-3 py-2 text-sm cursor-pointer hover:bg-secondary/70 transition"
+    >
+      <div className="text-[10px] text-muted-foreground mb-0.5 flex items-center gap-2">
+        {isLive ? (
+          <span className="inline-flex items-center gap-1 rounded bg-red-500 text-white px-1 py-0 font-black text-[9px] animate-pulse">
+            ● LIVE{live?.timeElapsed ? ` ${live.timeElapsed === "HT" ? "HT" : `${live.timeElapsed}'`}` : ""}
+          </span>
+        ) : (
+          <span><LocalTime iso={match.date} /></span>
+        )}
+        <span className="text-muted-foreground/70">· {match.city}</span>
+      </div>
+      <div className="flex items-center justify-between gap-2">
         <TeamChip team={e.home} />
-        <span className="text-muted-foreground text-xs">vs</span>
+        {isLive && live ? (
+          <span className="font-black text-primary tabular-nums">{live.liveScoreHome}–{live.liveScoreAway}</span>
+        ) : (
+          <span className="text-muted-foreground text-xs">vs</span>
+        )}
         <TeamChip team={e.away} />
       </div>
     </div>
@@ -328,16 +350,32 @@ function MiniFixture({ match }: { match: Match }) {
 }
 
 function MiniResult({ match }: { match: Match }) {
-  const s = getState().scores[match.id];
+  const ds = displayScore(match.id);
   const e = effectiveTeams(match);
+  const live = useLiveMatch(match.id);
+  const { open } = useMatchDetail();
+  const scorers = [...(live?.homeScorers ?? []), ...(live?.awayScorers ?? [])];
+  const shown = scorers.slice(0, 3);
+  const extra = scorers.length - shown.length;
   return (
-    <div className="rounded-md bg-secondary/40 px-3 py-2 text-sm">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => open(match.id)}
+      onKeyDown={(ev) => { if (ev.key === "Enter") open(match.id); }}
+      className="rounded-md bg-secondary/40 px-3 py-2 text-sm cursor-pointer hover:bg-secondary/70 transition"
+    >
       <div className="text-[10px] text-muted-foreground mb-0.5"><LocalTime iso={match.date} /></div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <TeamChip team={e.home} />
-        <span className="font-black text-primary tabular-nums">{s?.home ?? 0}–{s?.away ?? 0}</span>
+        <span className="font-black text-primary tabular-nums">{ds?.home ?? 0}–{ds?.away ?? 0}</span>
         <TeamChip team={e.away} />
       </div>
+      {scorers.length > 0 && (
+        <div className="text-[10px] text-muted-foreground mt-1 truncate">
+          ⚽ {shown.join(", ")}{extra > 0 ? ` +${extra} more` : ""}
+        </div>
+      )}
     </div>
   );
 }
