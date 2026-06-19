@@ -210,6 +210,7 @@ function App() {
         {apiMeta.offline && <div className="text-amber-400">⚠ Using offline fallback data — live API unavailable.</div>}
       </footer>
     </div>
+    </MatchDetailProvider>
   );
 }
 
