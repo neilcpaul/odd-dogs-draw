@@ -484,8 +484,11 @@ function FixtureRow({ match }: { match: Match }) {
       }
     }
   }
-  const isLive = apiMeta.liveMatchIds.has(match.id) && !score?.played;
+  const live = useLiveMatch(match.id);
+  const isLive = (live?.liveStatus === "LIVE") || (apiMeta.liveMatchIds.has(match.id) && !score?.played);
+  const ds = displayScore(match.id);
   const ukTv = apiMeta.ukChannels.map((c) => c.name).join(" / ");
+  const { open } = useMatchDetail();
 
   const ownerH = teamOwner(e.home);
   const ownerA = teamOwner(e.away);
@@ -493,7 +496,13 @@ function FixtureRow({ match }: { match: Match }) {
   const stageLabel = match.stage === "group" ? `Group ${match.group}` : match.stage;
 
   return (
-    <Card className="p-3 md:p-4 bg-card border-border">
+    <Card
+      className="p-3 md:p-4 bg-card border-border cursor-pointer hover:ring-2 hover:ring-primary/30 transition"
+      onClick={() => open(match.id)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(ev) => { if (ev.key === "Enter") open(match.id); }}
+    >
       <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-2 gap-2">
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="border-primary/40 text-primary">{stageLabel}</Badge>
@@ -506,7 +515,7 @@ function FixtureRow({ match }: { match: Match }) {
         <div className="flex items-center gap-1.5 flex-wrap justify-end">
           {isLive && (
             <span className="inline-flex items-center gap-1 rounded bg-red-500 text-white px-1.5 py-0.5 font-black text-[10px] animate-pulse">
-              ● LIVE
+              ● LIVE{live?.timeElapsed ? ` ${live.timeElapsed === "HT" ? "HT" : `${live.timeElapsed}'`}` : ""}
             </span>
           )}
           {wildcardTeams.map((t) => (
@@ -522,11 +531,11 @@ function FixtureRow({ match }: { match: Match }) {
           {ownerH && <div className="text-[10px] text-muted-foreground mt-0.5">{ownerH}</div>}
         </div>
         <div className="flex items-center justify-center gap-2 font-black tabular-nums text-lg min-w-[80px]">
-          {score?.played ? (
+          {ds ? (
             <>
-              <span>{score.home}</span>
+              <span>{ds.home}</span>
               <span className="text-muted-foreground">–</span>
-              <span>{score.away}</span>
+              <span>{ds.away}</span>
             </>
           ) : (
             <span className="text-muted-foreground text-xs font-normal">vs</span>
@@ -537,8 +546,8 @@ function FixtureRow({ match }: { match: Match }) {
           {ownerA && <div className="text-[10px] text-muted-foreground mt-0.5">{ownerA}</div>}
         </div>
       </div>
-      {score?.played && (
-        <div className="text-[10px] text-muted-foreground mt-2">Final (live API)</div>
+      {ds?.played && (
+        <div className="text-[10px] text-muted-foreground mt-2">Full time</div>
       )}
     </Card>
   );
