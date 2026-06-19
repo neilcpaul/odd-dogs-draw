@@ -108,7 +108,7 @@ function MatchDetailModal({ matchId, onClose }: { matchId: string | null; onClos
             <div>
               {isLive && (
                 <span className="inline-flex items-center gap-1 rounded bg-red-500 text-white px-2 py-0.5 font-black text-xs animate-pulse">
-                  ● LIVE{live?.timeElapsed ? ` ${live.timeElapsed === "HT" ? "HT" : `${live.timeElapsed}'`}` : ""}
+                  ● LIVE{live?.timeElapsed === "HT" ? " HT" : /^\d+(\+\d+)?$/.test(live?.timeElapsed ?? "") ? ` ${live!.timeElapsed}'` : ""}
                 </span>
               )}
               {isFinished && !isLive && (

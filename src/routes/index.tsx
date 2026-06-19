@@ -329,7 +329,7 @@ function MiniFixture({ match }: { match: Match }) {
       <div className="text-[10px] text-muted-foreground mb-0.5 flex items-center gap-2">
         {isLive ? (
           <span className="inline-flex items-center gap-1 rounded bg-red-500 text-white px-1 py-0 font-black text-[9px] animate-pulse">
-            ● LIVE{live?.timeElapsed ? ` ${live.timeElapsed === "HT" ? "HT" : `${live.timeElapsed}'`}` : ""}
+            ● LIVE{live?.timeElapsed === "HT" ? " HT" : /^\d+(\+\d+)?$/.test(live?.timeElapsed ?? "") ? ` ${live!.timeElapsed}'` : ""}
           </span>
         ) : (
           <span><LocalTime iso={match.date} /></span>
@@ -515,7 +515,7 @@ function FixtureRow({ match }: { match: Match }) {
         <div className="flex items-center gap-1.5 flex-wrap justify-end">
           {isLive && (
             <span className="inline-flex items-center gap-1 rounded bg-red-500 text-white px-1.5 py-0.5 font-black text-[10px] animate-pulse">
-              ● LIVE{live?.timeElapsed ? ` ${live.timeElapsed === "HT" ? "HT" : `${live.timeElapsed}'`}` : ""}
+              ● LIVE{live?.timeElapsed === "HT" ? " HT" : /^\d+(\+\d+)?$/.test(live?.timeElapsed ?? "") ? ` ${live!.timeElapsed}'` : ""}
             </span>
           )}
           {wildcardTeams.map((t) => (
