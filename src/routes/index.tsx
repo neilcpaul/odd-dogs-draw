@@ -648,6 +648,29 @@ function PlayersTab({ focusPlayer, onConsumeFocus }: { focusPlayer: string | nul
   );
 }
 
+function MatchRow({ matchId, label, points, hasWC, live }: { matchId: string; label: string; points: number; hasWC: boolean; live: boolean }) {
+  const { open } = useMatchDetail();
+  return (
+    <button
+      type="button"
+      onClick={() => open(matchId)}
+      className="w-full flex items-center justify-between gap-2 text-[11px] text-muted-foreground hover:text-foreground transition text-left"
+    >
+      <span className="truncate flex items-center gap-1">
+        {live && (
+          <span className="inline-flex items-center gap-0.5 rounded bg-red-500 text-white px-1 py-0 text-[9px] font-black animate-pulse">●LIVE</span>
+        )}
+        {label}
+      </span>
+      <span className={`font-bold ${live ? "italic text-amber-400" : "text-primary"}`}>
+        {live ? "~" : "+"}{points}{hasWC ? " ⚡" : ""}
+      </span>
+    </button>
+  );
+}
+
+
+
 /* ---------------- WILDCARDS ---------------- */
 
 function WildcardsTab() {
