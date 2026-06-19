@@ -86,10 +86,11 @@ function parseScorers(raw: string | null | undefined): string[] {
 }
 
 function deriveStatus(finished: string | undefined, timeElapsed: string | undefined): LiveStatus {
-  if (finished === "TRUE") return "FINISHED";
+  if (finished === "TRUE" || (timeElapsed ?? "").trim().toLowerCase() === "finished") return "FINISHED";
   const te = (timeElapsed ?? "").trim();
   if (!te || te === "0") return "UPCOMING";
-  if (te === "HT") return "LIVE";
+  const lower = te.toLowerCase();
+  if (lower === "ht" || lower === "live") return "LIVE";
   if (/^\d+(\+\d+)?$/.test(te)) return "LIVE";
   return "UPCOMING";
 }
