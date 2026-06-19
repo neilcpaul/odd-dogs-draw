@@ -325,17 +325,21 @@ export function nextUpcoming(n: number): Match[] {
       const { home, away } = effectiveTeams(m);
       return home && away;
     })
-    .filter((m) => new Date(m.date).getTime() >= now - 1000 * 60 * 60 * 2)
-    .filter((m) => !state.scores[m.id]?.played)
-    .sort((a, b) => a.date.localeCompare(b.date))
+    .filter((m) => new Date(m.date).getTime() >= now - 1000 * 60 * 60 * 4)
+    .filter((m) => !effectiveScore(m.id))
+    .sort((a, b) => {
+      // LIVE matches first
+      const al = isMatchLive(a.id) ? 0 : 1;
+      const bl = isMatchLive(b.id) ? 0 : 1;
+      if (al !== bl) return al - bl;
+      return a.date.localeCompare(b.date);
+    })
     .slice(0, n);
 }
 
 export function recentResults(n: number): Match[] {
-  const now = Date.now();
   return ALL_MATCHES
-    .filter((m) => state.scores[m.id]?.played)
-    .filter((m) => new Date(m.date).getTime() <= now)
+    .filter((m) => !!effectiveScore(m.id))
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, n);
 }
