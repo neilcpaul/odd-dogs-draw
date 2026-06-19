@@ -111,6 +111,35 @@ function findMatch(g: RawGame): Match | undefined {
   );
 }
 
+const CACHE_KEY = "wc-live-cache-v1";
+
+function loadCache(): Record<string, LiveMatch> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveCache(cache: Record<string, LiveMatch>) {
+  try {
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+  } catch { /* ignore quota errors */ }
+}
+
+// Initialise from cache so previously-seen scorers survive across reloads
+// and remain visible even after the API drops a finished match.
+if (typeof window !== "undefined") {
+  const cached = loadCache();
+  if (Object.keys(cached).length > 0) {
+    state = { loading: false, loaded: true, byMatchId: cached };
+  }
+}
+
 export async function fetchLive(): Promise<void> {
   if (typeof window === "undefined") return;
   state = { ...state, loading: true };
@@ -127,12 +156,14 @@ export async function fetchLive(): Promise<void> {
       emit();
       return;
     }
-    const byMatchId: Record<string, LiveMatch> = {};
+    // Start from existing cache so historic matches (which the API may have
+    // dropped) keep their scorers and final scores available.
+    const byMatchId: Record<string, LiveMatch> = { ...state.byMatchId };
     for (const raw of json.data as RawGame[]) {
       try {
         const m = findMatch(raw);
         if (!m) continue;
-        byMatchId[m.id] = {
+        const next: LiveMatch = {
           matchId: m.id,
           liveStatus: deriveStatus(raw?.finished, raw?.time_elapsed),
           liveScoreHome: parseScore(raw?.home_score),
@@ -141,11 +172,22 @@ export async function fetchLive(): Promise<void> {
           awayScorers: parseScorers(raw?.away_scorers),
           timeElapsed: (raw?.time_elapsed ?? "").trim(),
         };
+        const prev = byMatchId[m.id];
+        // If the fresh payload has lost scorers we previously saw for an
+        // already-finished match, prefer the cached ones.
+        if (prev && prev.liveStatus === "FINISHED"
+            && next.homeScorers.length === 0 && next.awayScorers.length === 0
+            && (prev.homeScorers.length > 0 || prev.awayScorers.length > 0)) {
+          next.homeScorers = prev.homeScorers;
+          next.awayScorers = prev.awayScorers;
+        }
+        byMatchId[m.id] = next;
       } catch (e) {
         console.warn("worldcup26.ir: per-match parse failed", e);
       }
     }
     state = { loading: false, loaded: true, byMatchId };
+    saveCache(byMatchId);
     emit();
   } catch (e) {
     console.warn("worldcup26.ir fetch failed", e);
