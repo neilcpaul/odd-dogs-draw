@@ -3,7 +3,7 @@
 // Fails silently on any error.
 
 import { useSyncExternalStore } from "react";
-import { ALL_MATCHES, GROUP_MATCHES, type Match } from "./wc-data";
+import { ALL_MATCHES, type Match } from "./wc-data";
 import { canonName } from "./wc-api";
 
 const ENDPOINT = "https://worldcup26.ir/get/games";
@@ -100,12 +100,6 @@ function parseScore(s: string | undefined): number {
 }
 
 function findMatch(g: RawGame): Match | undefined {
-  if (g.id) {
-    const idx = parseInt(g.id, 10);
-    if (Number.isFinite(idx) && idx >= 1 && idx <= GROUP_MATCHES.length) {
-      return GROUP_MATCHES[idx - 1];
-    }
-  }
   const home = normaliseName(g.home_team_name_en ?? "");
   const away = normaliseName(g.away_team_name_en ?? "");
   if (!home || !away) return undefined;
