@@ -1424,6 +1424,13 @@ function ProjectedKnockoutCard({
   label: string;
 }) {
   const anyProjected = slots.some((s) => s.team === null || s.projected);
+  // Overall matchup confidence = product of both slot confidences
+  const matchConf = slots.reduce<number | null>((acc, s) => {
+    const c = s.confidence;
+    if (c === undefined) return acc;
+    return acc === null ? c : acc * c;
+  }, null);
+  const showMatchConf = anyProjected && matchConf !== null && matchConf < 0.9999;
   return (
     <div
       className={`rounded-md p-2 space-y-1 ${anyProjected ? "border border-dashed border-muted-foreground/40 bg-secondary/20" : "bg-secondary/40 border border-transparent"}`}
@@ -1431,8 +1438,11 @@ function ProjectedKnockoutCard({
       <div className="text-[10px] text-muted-foreground flex items-center justify-between gap-1">
         <span>{label} · <LocalTime iso={match.date} /></span>
         {anyProjected && (
-          <span className="rounded bg-amber-400/15 text-amber-400 px-1 py-0 text-[9px] font-bold tracking-wide">
-            PROJECTED
+          <span
+            className="rounded bg-amber-400/15 text-amber-400 px-1 py-0 text-[9px] font-bold tracking-wide"
+            title="Confidence-based projection"
+          >
+            {showMatchConf ? `~${formatConfidence(matchConf!)} CONF` : "PROJECTED"}
           </span>
         )}
       </div>
@@ -1442,6 +1452,14 @@ function ProjectedKnockoutCard({
       </div>
     </div>
   );
+}
+
+function formatConfidence(c: number): string {
+  const pct = c * 100;
+  if (pct >= 99.5) return "99%";
+  if (pct < 1) return `${pct.toFixed(1)}%`;
+  if (pct < 10) return `${pct.toFixed(1)}%`;
+  return `${pct.toFixed(0)}%`;
 }
 
 function ProjectedSlotRow({ slot }: { slot: ProjectedSlot }) {
@@ -1460,6 +1478,8 @@ function ProjectedSlotRow({ slot }: { slot: ProjectedSlot }) {
     : slot.role === "runner-up" ? `2${slot.group}`
     : slot.role === "3rd-place" ? `3${slot.group}`
     : "";
+  const conf = slot.confidence;
+  const showConf = slot.projected && conf !== undefined;
   return (
     <div className="flex items-center gap-1.5">
       <span className="w-1.5 h-5 rounded" style={{ background: color }} />
@@ -1467,7 +1487,16 @@ function ProjectedSlotRow({ slot }: { slot: ProjectedSlot }) {
         <span className="text-[9px] text-muted-foreground w-6 tabular-nums">{roleLabel}</span>
       )}
       <BracketTeam team={slot.team} projected={slot.projected} />
+      {showConf && (
+        <span
+          className="ml-auto text-[9px] tabular-nums text-amber-400/90 font-semibold"
+          title={`Confidence this team fills this slot: ${(conf! * 100).toFixed(1)}%`}
+        >
+          {formatConfidence(conf!)}
+        </span>
+      )}
     </div>
   );
+
 }
 
