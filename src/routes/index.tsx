@@ -1100,31 +1100,35 @@ function projectMatchOutcome(
       loser: { team: actual.loser, projected: false, viaMatchId: matchId },
     };
   }
-  if (a.team === null && b.team === null) {
+  type HasTeam = { team: string; group?: GroupLetter };
+  const aHas: HasTeam | null = a.team === null ? null : { team: a.team, group: a.group };
+  const bHas: HasTeam | null = b.team === null ? null : { team: b.team, group: b.group };
+  if (!aHas && !bHas) {
     return {
       winner: { team: null, description: `Winner ${matchId}` },
       loser: { team: null, description: `Loser ${matchId}` },
     };
   }
-  if (a.team === null) {
+  if (!aHas && bHas) {
     return {
-      winner: { team: b.team!, projected: true, group: b.group, viaMatchId: matchId },
+      winner: { team: bHas.team, projected: true, group: bHas.group, viaMatchId: matchId },
       loser: { team: null, description: `Loser ${matchId}` },
     };
   }
-  if (b.team === null) {
+  if (!bHas && aHas) {
     return {
-      winner: { team: a.team!, projected: true, group: a.group, viaMatchId: matchId },
+      winner: { team: aHas.team, projected: true, group: aHas.group, viaMatchId: matchId },
       loser: { team: null, description: `Loser ${matchId}` },
     };
   }
-  const sa = teamStrengthScore(a.team, standings);
-  const sb = teamStrengthScore(b.team, standings);
-  const [w, l] = sa >= sb ? [a, b] : [b, a];
+  const sa = teamStrengthScore(aHas!.team, standings);
+  const sb = teamStrengthScore(bHas!.team, standings);
+  const [w, l] = sa >= sb ? [aHas!, bHas!] : [bHas!, aHas!];
   return {
-    winner: { team: w.team!, projected: true, group: w.group, viaMatchId: matchId },
-    loser: { team: l.team!, projected: true, group: l.group, viaMatchId: matchId },
+    winner: { team: w.team, projected: true, group: w.group, viaMatchId: matchId },
+    loser: { team: l.team, projected: true, group: l.group, viaMatchId: matchId },
   };
+
 }
 
 type RoundProjection = {
