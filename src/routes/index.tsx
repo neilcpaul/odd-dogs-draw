@@ -1327,8 +1327,9 @@ function Bracket() {
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-bold">{label} — projected matchups</h3>
               <span className="text-[10px] text-muted-foreground italic">
-                Projected from team strength + live group form. Updates as scores come in.
+                Confidence-based: % combines group progression × matchup win probability. Updates live as scores come in.
               </span>
+
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {matches.map((m, i) => (
