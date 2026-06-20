@@ -816,6 +816,50 @@ function simGoals(): number {
   return k - 1;
 }
 
+// FIFA group-stage tiebreakers: points, GD, GF, then head-to-head (pts/GD/GF among tied teams), then random.
+type TStat = { p: number; gf: number; ga: number; pts: number };
+type SimResult = { home: string; away: string; hs: number; as: number };
+
+function rankGroupTeams(teams: string[], stats: Record<string, TStat>, results: SimResult[]): string[] {
+  const base = (a: string, b: string) =>
+    stats[b].pts - stats[a].pts ||
+    (stats[b].gf - stats[b].ga) - (stats[a].gf - stats[a].ga) ||
+    stats[b].gf - stats[a].gf;
+  const sorted = [...teams].sort(base);
+  const out: string[] = [];
+  let i = 0;
+  while (i < sorted.length) {
+    let j = i + 1;
+    while (j < sorted.length && base(sorted[i], sorted[j]) === 0) j++;
+    const tied = sorted.slice(i, j);
+    if (tied.length <= 1) {
+      out.push(...tied);
+    } else {
+      // Mini-league among tied teams (head-to-head)
+      const h: Record<string, TStat> = {};
+      tied.forEach((t) => h[t] = { p: 0, gf: 0, ga: 0, pts: 0 });
+      const tiedSet = new Set(tied);
+      for (const r of results) {
+        if (!tiedSet.has(r.home) || !tiedSet.has(r.away)) continue;
+        h[r.home].gf += r.hs; h[r.home].ga += r.as;
+        h[r.away].gf += r.as; h[r.away].ga += r.hs;
+        if (r.hs > r.as) h[r.home].pts += 3;
+        else if (r.hs < r.as) h[r.away].pts += 3;
+        else { h[r.home].pts++; h[r.away].pts++; }
+      }
+      tied.sort((a, b) =>
+        h[b].pts - h[a].pts ||
+        (h[b].gf - h[b].ga) - (h[a].gf - h[a].ga) ||
+        h[b].gf - h[a].gf ||
+        Math.random() - 0.5
+      );
+      out.push(...tied);
+    }
+    i = j;
+  }
+  return out;
+}
+
 // Monte Carlo elimination probability for the group stage.
 // WC26: top 2 per group + 8 best 3rd-placed teams advance to R32 (16 of 48 out).
 // Played/live scores are fixed; unplayed matches are simulated.
@@ -825,8 +869,9 @@ function computeElimProbs(N = 1500): Record<string, number> {
   for (const g of GROUP_LETTERS) for (const t of GROUPS[g]) counts[t] = 0;
 
   for (let i = 0; i < N; i++) {
-    const stats: Record<string, { p: number; gf: number; ga: number; pts: number }> = {};
+    const stats: Record<string, TStat> = {};
     for (const g of GROUP_LETTERS) for (const t of GROUPS[g]) stats[t] = { p: 0, gf: 0, ga: 0, pts: 0 };
+    const results: SimResult[] = [];
 
     for (const { m, s } of snap) {
       const h = s ? s.home : simGoals();
@@ -838,14 +883,12 @@ function computeElimProbs(N = 1500): Record<string, number> {
       if (h > a) hs.pts += 3;
       else if (h < a) as_.pts += 3;
       else { hs.pts++; as_.pts++; }
+      results.push({ home: m.home, away: m.away, hs: h, as: a });
     }
 
     const thirds: Array<{ team: string; pts: number; gd: number; gf: number; r: number }> = [];
     for (const g of GROUP_LETTERS) {
-      const teams = [...GROUPS[g]].sort((a, b) => {
-        const sa = stats[a], sb = stats[b];
-        return sb.pts - sa.pts || (sb.gf - sb.ga) - (sa.gf - sa.ga) || sb.gf - sa.gf || Math.random() - 0.5;
-      });
+      const teams = rankGroupTeams(GROUPS[g], stats, results);
       counts[teams[3]]++; // 4th: eliminated
       const t3 = teams[2];
       thirds.push({ team: t3, pts: stats[t3].pts, gd: stats[t3].gf - stats[t3].ga, gf: stats[t3].gf, r: Math.random() });
