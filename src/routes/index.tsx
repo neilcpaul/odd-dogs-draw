@@ -1308,8 +1308,9 @@ function Bracket() {
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-bold">Round of 32 — projected bracket</h3>
           <span className="text-[10px] text-muted-foreground italic">
-            Projected slots shown in italics with a dashed border. Confirmed once their group(s) finish.
+            Confidence-based: % next to each team = probability they fill that slot. Confirmed when their group(s) finish.
           </span>
+
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {KNOCKOUT_MATCHES.filter((m) => m.stage === "R32").map((m, i) => (
