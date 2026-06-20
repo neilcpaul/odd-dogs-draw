@@ -1031,7 +1031,7 @@ function projectR32Slots(): ProjectedSlot[][] {
         rowOut.push({ team: s.order[1], projected: !s.allPlayed, group: slot.g, role: "runner-up" });
       } else {
         const a = b3Assignments.get(row * 10 + col)!;
-        if (a.team) {
+        if (a.team !== null) {
           rowOut.push({ team: a.team, projected: a.projected, group: a.group, role: "3rd-place" });
         } else {
           rowOut.push({ team: null, description: a.description });
