@@ -981,8 +981,10 @@ type ProjectedSlot =
       group?: GroupLetter;
       role?: "winner" | "runner-up" | "3rd-place";
       viaMatchId?: string;
+      confidence?: number; // 0..1 — probability this team occupies this slot
     }
-  | { team: null; description: string };
+  | { team: null; description: string; confidence?: number };
+
 
 function projectR32Slots(): ProjectedSlot[][] {
   const standings = bestEstimateStandings();
