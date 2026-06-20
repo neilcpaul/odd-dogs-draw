@@ -905,8 +905,9 @@ function computeElimProbs(N = 1500): Record<string, number> {
 function GroupTable({ letter, elimProbs }: { letter: typeof GROUP_LETTERS[number]; elimProbs: Record<string, number> }) {
   useAppState();
   const teams = GROUPS[letter];
-  const stats: Record<string, { p: number; gf: number; ga: number; pts: number }> = {};
+  const stats: Record<string, TStat> = {};
   teams.forEach((t) => stats[t] = { p: 0, gf: 0, ga: 0, pts: 0 });
+  const results: SimResult[] = [];
   for (const m of GROUP_MATCHES.filter((m) => m.group === letter)) {
     const s = getState().scores[m.id];
     if (!s?.played) continue;
@@ -916,8 +917,9 @@ function GroupTable({ letter, elimProbs }: { letter: typeof GROUP_LETTERS[number
     if (s.home > s.away) stats[m.home].pts += 3;
     else if (s.home < s.away) stats[m.away].pts += 3;
     else { stats[m.home].pts++; stats[m.away].pts++; }
+    results.push({ home: m.home, away: m.away, hs: s.home, as: s.away });
   }
-  const sorted = [...teams].sort((a, b) => stats[b].pts - stats[a].pts || (stats[b].gf - stats[b].ga) - (stats[a].gf - stats[a].ga));
+  const sorted = rankGroupTeams(teams, stats, results);
   return (
     <div className="rounded-md bg-secondary/30 p-2">
       <div className="text-xs font-black text-primary mb-1">Group {letter}</div>
