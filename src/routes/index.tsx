@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fetchAndApply, initApi, useApiMeta, WILDCARD_ASSIGNMENTS } from "@/lib/wc-api";
 import { initLive, useLiveMatch, useLiveState } from "@/lib/wc-live";
 import {
@@ -875,10 +875,69 @@ function liveGroupStats(letter: GroupLetter): { stats: Record<string, TStat>; re
   return { stats, results, allPlayed: played === ms.length };
 }
 
+interface PlacementProbs {
+  first: number;
+  second: number;
+  third: number;
+  thirdThrough: number;
+  thirdOut: number;
+  fourth: number;
+  q: number;
+  t: number;
+  e: number;
+}
+
+type GroupProbs = Record<string, PlacementProbs>;
+type ThirdRecord = { team: string; group: GroupLetter; pts: number; gd: number; gf: number; elo: number };
+type GroupScenario = {
+  group: GroupLetter;
+  weight: number;
+  buckets: string[][];
+  third: ThirdRecord;
+};
+
+function emptyPlacementProbs(): PlacementProbs {
+  return {
+    first: 0,
+    second: 0,
+    third: 0,
+    thirdThrough: 0,
+    thirdOut: 0,
+    fourth: 0,
+    q: 0,
+    t: 0,
+    e: 0,
+  };
+}
+
+function compareThirdRecords(a: ThirdRecord, b: ThirdRecord): number {
+  return b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || b.elo - a.elo;
+}
+
+function probabilityThirdRanksTop8(
+  target: ThirdRecord,
+  scenariosByGroup: Record<GroupLetter, GroupScenario[]>,
+): number {
+  let dist = [1];
+  for (const g of GROUP_LETTERS) {
+    if (g === target.group) continue;
+    const pAbove = scenariosByGroup[g].reduce(
+      (sum, scenario) => sum + (compareThirdRecords(scenario.third, target) < 0 ? scenario.weight : 0),
+      0,
+    );
+    const next = Array(dist.length + 1).fill(0);
+    for (let i = 0; i < dist.length; i++) {
+      next[i] += dist[i] * (1 - pAbove);
+      next[i + 1] += dist[i] * pAbove;
+    }
+    dist = next;
+  }
+  return dist.slice(0, 8).reduce((sum, prob) => sum + prob, 0);
+}
+
 // Per-group exhaustive enumeration of remaining unplayed matches (3^n).
 // Each unplayed match → home win 1-0, draw 1-1, away win 0-1.
-type GroupProbs = Record<string, { q: number; t: number; e: number }>;
-function computeGroupProbs(letter: GroupLetter): GroupProbs {
+function enumerateGroupScenarios(letter: GroupLetter): GroupScenario[] {
   const teams = GROUPS[letter];
   const matches = GROUP_MATCHES.filter((m) => m.group === letter);
   type K = { m: Match; hs: number; as: number };
@@ -898,8 +957,7 @@ function computeGroupProbs(letter: GroupLetter): GroupProbs {
       });
     }
   }
-  const out: GroupProbs = {};
-  teams.forEach((t) => out[t] = { q: 0, t: 0, e: 0 });
+  const scenarios: GroupScenario[] = [];
   const N = Math.pow(3, unknown.length);
   let totalWeight = 0;
   for (let idx = 0; idx < N; idx++) {
@@ -932,25 +990,59 @@ function computeGroupProbs(letter: GroupLetter): GroupProbs {
       }
     }
     const buckets = rankBuckets(teams, stats, results);
-    const q = bucketCredit(buckets, [1, 2]);
-    const tt = bucketCredit(buckets, [3]);
-    const e = bucketCredit(buckets, [4]);
+    const thirdTeam = buckets.flat()[2];
+    const thirdStats = stats[thirdTeam];
     totalWeight += scenarioWeight;
-    for (const t of teams) {
-      out[t].q += (q[t] ?? 0) * scenarioWeight;
-      out[t].t += (tt[t] ?? 0) * scenarioWeight;
-      out[t].e += (e[t] ?? 0) * scenarioWeight;
-    }
+    scenarios.push({
+      group: letter,
+      weight: scenarioWeight,
+      buckets,
+      third: {
+        team: thirdTeam,
+        group: letter,
+        pts: thirdStats.pts,
+        gd: thirdStats.gf - thirdStats.ga,
+        gf: thirdStats.gf,
+        elo: teamElo(thirdTeam),
+      },
+    });
   }
-  for (const t of teams) {
-    out[t].q /= totalWeight || 1; out[t].t /= totalWeight || 1; out[t].e /= totalWeight || 1;
+  for (const scenario of scenarios) {
+    scenario.weight /= totalWeight || 1;
   }
-  return out;
+  return scenarios;
 }
 
-function computeAllGroupProbs(): Record<string, { q: number; t: number; e: number }> {
-  const all: Record<string, { q: number; t: number; e: number }> = {};
-  for (const g of GROUP_LETTERS) Object.assign(all, computeGroupProbs(g));
+function computeAllGroupProbs(): GroupProbs {
+  const all: GroupProbs = {};
+  for (const team of Object.keys(TEAMS)) all[team] = emptyPlacementProbs();
+  const scenariosByGroup = {} as Record<GroupLetter, GroupScenario[]>;
+  for (const g of GROUP_LETTERS) scenariosByGroup[g] = enumerateGroupScenarios(g);
+
+  for (const g of GROUP_LETTERS) {
+    for (const scenario of scenariosByGroup[g]) {
+      const first = bucketCredit(scenario.buckets, [1]);
+      const second = bucketCredit(scenario.buckets, [2]);
+      const fourth = bucketCredit(scenario.buckets, [4]);
+      for (const team of GROUPS[g]) {
+        all[team].first += (first[team] ?? 0) * scenario.weight;
+        all[team].second += (second[team] ?? 0) * scenario.weight;
+        all[team].fourth += (fourth[team] ?? 0) * scenario.weight;
+      }
+
+      const pThrough = probabilityThirdRanksTop8(scenario.third, scenariosByGroup);
+      const third = all[scenario.third.team];
+      third.third += scenario.weight;
+      third.thirdThrough += scenario.weight * pThrough;
+      third.thirdOut += scenario.weight * (1 - pThrough);
+    }
+  }
+
+  for (const probs of Object.values(all)) {
+    probs.q = probs.first + probs.second;
+    probs.t = probs.third;
+    probs.e = probs.fourth;
+  }
   return all;
 }
 
@@ -1023,7 +1115,7 @@ type ProjectedSlot =
 
 
 function projectR32Slots(
-  probs: Record<string, { q: number; t: number; e: number }>,
+  probs: GroupProbs,
 ): ProjectedSlot[][] {
 
   const standings = bestEstimateStandings();
@@ -1074,35 +1166,35 @@ function projectR32Slots(
       if (slot.kind === "w") {
         const s = standings[slot.g];
         const team = s.order[0];
-        const p = probs[team] ?? { q: 0, t: 0, e: 0 };
+        const p = probs[team] ?? emptyPlacementProbs();
         rowOut.push({
           team,
           projected: !s.allPlayed,
           group: slot.g,
           role: "winner",
-          confidence: s.allPlayed ? 1 : p.q,
+          confidence: s.allPlayed ? 1 : p.first,
         });
       } else if (slot.kind === "ru") {
         const s = standings[slot.g];
         const team = s.order[1];
-        const p = probs[team] ?? { q: 0, t: 0, e: 0 };
+        const p = probs[team] ?? emptyPlacementProbs();
         rowOut.push({
           team,
           projected: !s.allPlayed,
           group: slot.g,
           role: "runner-up",
-          confidence: s.allPlayed ? 1 : p.q,
+          confidence: s.allPlayed ? 1 : p.second,
         });
       } else {
         const a = b3Assignments.get(row * 10 + col)!;
         if (a.team !== null) {
-          const p = probs[a.team] ?? { q: 0, t: 0, e: 0 };
+          const p = probs[a.team] ?? emptyPlacementProbs();
           rowOut.push({
             team: a.team,
             projected: a.projected,
             group: a.group,
             role: "3rd-place",
-            confidence: a.projected ? p.t : 1,
+            confidence: a.projected ? p.thirdThrough : 1,
           });
         } else {
           rowOut.push({ team: null, description: a.description });
@@ -1190,7 +1282,7 @@ type RoundProjection = {
 };
 
 function projectAllRounds(
-  probs: Record<string, { q: number; t: number; e: number }>,
+  probs: GroupProbs,
   scores: Record<string, { home: number; away: number; played: boolean }>,
   knockoutSlots: Record<string, { home?: string; away?: string }>,
 ): RoundProjection {
@@ -1302,9 +1394,9 @@ function Bracket() {
       <Card className="p-4 bg-card border-border">
         <h2 className="text-lg font-bold mb-1">Group standings (live)</h2>
         <p className="text-[11px] text-muted-foreground mb-2">
-          Model-weighted qualification / elimination probabilities from enumerating every possible result
+          Model-weighted group-finish probabilities from enumerating every possible result
           class of remaining group matches, using official FIFA 2026 tiebreakers
-          (pts → head-to-head → GD → GF → Elo ranking).
+          (pts → head-to-head → GD → GF → Elo ranking). Third-place teams still need a top-8 cross-group ranking.
         </p>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {GROUP_LETTERS.map((g) => (
@@ -1378,27 +1470,38 @@ function GroupTable({
   standing,
 }: {
   letter: GroupLetter;
-  probs: Record<string, { q: number; t: number; e: number }>;
+  probs: GroupProbs;
   standing: GroupStanding;
 }) {
+  const formatPlacementChance = (chance: number) => {
+    if (chance >= 0.9995) return "✓";
+    const pct = chance * 100;
+    if (pct < 0.1) return "<0.1%";
+    if (pct < 10) return `${pct.toFixed(1)}%`;
+    return `${pct.toFixed(0)}%`;
+  };
+
+  const placementClass = (kind: "advance" | "warning" | "out") => {
+    if (kind === "advance") return "bg-emerald-500/15 text-emerald-400";
+    if (kind === "out") return "bg-destructive/15 text-destructive";
+    return "bg-amber-400/15 text-amber-400";
+  };
+
   return (
     <div className="rounded-md bg-secondary/30 p-2">
       <div className="text-xs font-black text-primary mb-1">Group {letter}</div>
       <table className="w-full text-[11px]">
         <tbody>
           {standing.order.map((t) => {
-            const p = probs[t] ?? { q: 0, t: 0, e: 0 };
+            const p = probs[t] ?? emptyPlacementProbs();
             const st = standing.stats[t];
-            // status badge (progression % = qualify + best 3rd)
-            const prog = p.q + p.t;
-            let badge: ReactNode;
-            if (prog >= 0.9999) {
-              badge = <span className="px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">THROUGH</span>;
-            } else if (prog <= 0.0001) {
-              badge = <span className="px-1 py-0.5 rounded bg-destructive/20 text-destructive font-bold">OUT</span>;
-            } else {
-              badge = <span className="px-1 py-0.5 rounded text-amber-400">{(prog * 100).toFixed(prog < 0.1 ? 1 : 0)}%</span>;
-            }
+            const placements = [
+              { label: "1st", chance: p.first, kind: "advance" as const },
+              { label: "2nd", chance: p.second, kind: "advance" as const },
+              { label: "3rd & thru", chance: p.thirdThrough, kind: "advance" as const },
+              { label: "3rd & out", chance: p.thirdOut, kind: "warning" as const },
+              { label: "4th", chance: p.fourth, kind: "out" as const },
+            ].filter((placement) => placement.chance > 0.0001);
             return (
               <tr key={t}>
                 <td className="py-0.5 pr-1">
@@ -1411,8 +1514,20 @@ function GroupTable({
                 <td className="text-right tabular-nums text-muted-foreground">{st.p}</td>
                 <td className="text-right tabular-nums text-muted-foreground">{st.gf}:{st.ga}</td>
                 <td className="text-right tabular-nums font-bold w-6">{st.pts}</td>
-                <td className="text-right w-12" title={`Progression ${((p.q+p.t)*100).toFixed(1)}% · Qualify ${(p.q*100).toFixed(0)}% · 3rd ${(p.t*100).toFixed(0)}%`}>
-                  {badge}
+                <td
+                  className="text-right min-w-[9rem]"
+                  title={`1st ${(p.first*100).toFixed(1)}% · 2nd ${(p.second*100).toFixed(1)}% · 3rd & thru ${(p.thirdThrough*100).toFixed(1)}% · 3rd & out ${(p.thirdOut*100).toFixed(1)}% · 4th ${(p.fourth*100).toFixed(1)}%`}
+                >
+                  <div className="flex flex-wrap justify-end gap-1">
+                    {placements.map((placement) => (
+                      <span
+                        key={placement.label}
+                        className={`rounded px-1 py-0.5 font-bold tabular-nums ${placementClass(placement.kind)}`}
+                      >
+                        {placement.label} {formatPlacementChance(placement.chance)}
+                      </span>
+                    ))}
+                  </div>
                 </td>
               </tr>
             );
