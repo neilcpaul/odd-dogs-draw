@@ -1731,6 +1731,7 @@ function PowerIndexTab() {
                             <table className="w-full text-xs">
                               <thead>
                                 <tr className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                  <th className="text-left font-bold py-1 pr-2">Date</th>
                                   <th className="text-left font-bold py-1 pr-2">Opponent</th>
                                   <th className="text-left font-bold py-1 pr-2">Stage</th>
                                   <th className="text-right font-bold py-1 pr-2">Score</th>
@@ -1745,6 +1746,7 @@ function PowerIndexTab() {
                               <tbody>
                                 {r.breakdown.map((b, idx) => (
                                   <tr key={idx} className="border-t border-border/30">
+                                    <td className="py-1 pr-2 text-muted-foreground whitespace-nowrap">{new Date(b.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</td>
                                     <td className="py-1 pr-2"><TeamChip team={b.opponent} /></td>
                                     <td className="py-1 pr-2 text-muted-foreground">{b.stage}</td>
                                     <td className="py-1 pr-2 text-right tabular-nums whitespace-nowrap">{b.gf}-{b.ga}</td>
@@ -1757,9 +1759,10 @@ function PowerIndexTab() {
                                   </tr>
                                 ))}
                                 <tr className="border-t border-border/60">
-                                  <td colSpan={8} className="py-1 pr-2 text-right text-muted-foreground uppercase text-[10px] tracking-wide font-bold">Total Power Index</td>
+                                  <td colSpan={9} className="py-1 pr-2 text-right text-muted-foreground uppercase text-[10px] tracking-wide font-bold">Total Power Index</td>
                                   <td className="py-1 text-right tabular-nums font-black text-primary">{r.powerIndex.toFixed(1)}</td>
                                 </tr>
+
                               </tbody>
                             </table>
                           </div>
