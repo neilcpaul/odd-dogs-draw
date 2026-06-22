@@ -18,6 +18,20 @@ const STAGE_K: Record<string, number> = {
   Final: 75,
 };
 
+export interface PowerMatchBreakdown {
+  date: string;
+  opponent: string;
+  stage: string;
+  gf: number;
+  ga: number;
+  resultPoints: number;
+  goalBonus: number;
+  difficulty: number;
+  upsetBonus: number;
+  stageFactor: number;
+  matchScore: number;
+}
+
 export interface TeamPower {
   team: string;
   group: GroupLetter | undefined;
@@ -30,6 +44,7 @@ export interface TeamPower {
   goalsFor: number;
   goalsAgainst: number;
   powerIndex: number;
+  breakdown: PowerMatchBreakdown[];
 }
 
 interface PlayedMatch {
