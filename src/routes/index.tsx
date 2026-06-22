@@ -1628,28 +1628,8 @@ function ProjectedSlotRow({ slot }: { slot: ProjectedSlot }) {
 
 /* ---------------- POWER INDEX ---------------- */
 
-function nextMatchAdvancePct(team: string): number | null {
-  const now = Date.now();
-  const upcoming = ALL_MATCHES
-    .filter((m) => {
-      const ds = displayScore(m.id);
-      if (ds?.played) return false;
-      const e = effectiveTeams(m);
-      return e.home === team || e.away === team;
-    })
-    .sort((a, b) => a.date.localeCompare(b.date));
-  const next = upcoming.find((m) => new Date(m.date).getTime() >= now - 1000 * 60 * 60 * 4) ?? upcoming[0];
-  if (!next) return null;
-  const e = effectiveTeams(next);
-  const price = priceMatch(e.home, e.away);
-  if (!price) return null;
-  if (next.stage === "group") {
-    return team === e.home ? price.homeWin : price.awayWin;
-  }
-  const adv = knockoutAdvanceProbability(e.home, e.away);
-  if (adv === null) return null;
-  return team === e.home ? adv : 1 - adv;
-}
+
+
 
 function useSimProbs(): { probs: Record<string, TeamSimProbs> | null; loading: boolean } {
   const app = useAppState();
