@@ -111,7 +111,7 @@ for (const p of PLAYERS) {
   for (const { pot, team } of p.teams) {
     const fifaRank = FIFA_RANKS[team];
     const startElo = fifaRank !== undefined ? 2000 - (fifaRank - 1) * 6 : undefined;
-    TEAMS[team] = { name: team, flag: FLAGS[team] ?? "🏳️", pot, fifaRank, startElo };
+    TEAMS[team] = { name: team, flag: FLAGS[team] ?? "🏳️", pot, fifaRank, startElo, teamColor: TEAM_COLORS[team] ?? "#94a3b8" };
   }
 }
 
