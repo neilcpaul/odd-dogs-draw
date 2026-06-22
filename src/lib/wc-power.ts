@@ -3,6 +3,7 @@
 
 import { ALL_MATCHES, TEAMS, teamGroup, type GroupLetter } from "./wc-data";
 import { effectiveScore, effectiveTeams } from "./wc-store";
+import { getLiveMatch } from "./wc-live";
 
 const DEFAULT_START_ELO = 1500;
 const HOST_BONUS = 80;
