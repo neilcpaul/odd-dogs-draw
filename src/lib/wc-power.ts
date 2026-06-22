@@ -5,7 +5,18 @@ import { ALL_MATCHES, TEAMS, teamGroup, type GroupLetter } from "./wc-data";
 import { effectiveScore, effectiveTeams } from "./wc-store";
 
 const DEFAULT_START_ELO = 1500;
-const K = 60;
+const HOST_BONUS = 80;
+const HOSTS = new Set(["USA", "Canada", "Mexico"]);
+
+const STAGE_K: Record<string, number> = {
+  group: 50,
+  R32: 55,
+  R16: 60,
+  QF: 65,
+  SF: 70,
+  "3rd": 75,
+  Final: 75,
+};
 
 export interface TeamPower {
   team: string;
@@ -28,6 +39,7 @@ interface PlayedMatch {
   goalsHome: number;
   goalsAway: number;
   isKnockout: boolean;
+  stage: string;
 }
 
 function collectPlayedMatches(): PlayedMatch[] {
@@ -44,6 +56,7 @@ function collectPlayedMatches(): PlayedMatch[] {
       goalsHome: score.home,
       goalsAway: score.away,
       isKnockout: m.stage !== "group",
+      stage: m.stage,
     });
   }
   out.sort((a, b) => a.date.localeCompare(b.date));
@@ -72,7 +85,13 @@ export function computeTeamPower(): TeamPower[] {
   for (const m of played) {
     const eloA = elo[m.home] ?? DEFAULT_START_ELO;
     const eloB = elo[m.away] ?? DEFAULT_START_ELO;
-    const expectedA = 1 / (1 + Math.pow(10, (eloB - eloA) / 400));
+
+    // Host advantage applies ONLY to the expected-score calc, never stored.
+    const aHost = HOSTS.has(m.home);
+    const bHost = HOSTS.has(m.away);
+    const hA = aHost && !bHost ? HOST_BONUS : 0;
+    const hB = bHost && !aHost ? HOST_BONUS : 0;
+    const expectedA = 1 / (1 + Math.pow(10, ((eloB + hB) - (eloA + hA)) / 400));
 
     // Knockout matches that ended level went to penalties — count as a draw
     // for Elo purposes, using the score at end of extra time.
@@ -84,6 +103,7 @@ export function computeTeamPower(): TeamPower[] {
 
     const gd = Math.abs(m.goalsHome - m.goalsAway);
     const G = goalDiffMultiplier(gd);
+    const K = STAGE_K[m.stage] ?? 50;
 
     elo[m.home] = eloA + K * G * (actualA - expectedA);
     elo[m.away] = eloB + K * G * ((1 - actualA) - (1 - expectedA));
