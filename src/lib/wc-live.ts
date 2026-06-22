@@ -201,5 +201,12 @@ export function initLive() {
   if (started || typeof window === "undefined") return;
   started = true;
   fetchLive();
-  window.setInterval(fetchLive, 120_000);
+  // Adaptive polling: 15s while any match is LIVE, 120s otherwise, so goals
+  // surface within seconds during a match without hammering the API at rest.
+  const tick = () => {
+    fetchLive();
+    const anyLive = Object.values(state.byMatchId).some((m) => m.liveStatus === "LIVE");
+    window.setTimeout(tick, anyLive ? 15_000 : 120_000);
+  };
+  window.setTimeout(tick, 15_000);
 }
