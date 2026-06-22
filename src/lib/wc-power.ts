@@ -207,6 +207,19 @@ export function computeTeamPower(): TeamPower[] {
         ((resultPoints + goalBonus) * difficulty + upsetBonus) * stageFactor;
 
       ts.powerIndex += matchScore;
+      ts.breakdown.push({
+        date: m.date,
+        opponent: s.opp,
+        stage: m.stage,
+        gf: s.gf,
+        ga: s.ga,
+        resultPoints,
+        goalBonus,
+        difficulty,
+        upsetBonus,
+        stageFactor,
+        matchScore,
+      });
     }
   }
 
