@@ -3,6 +3,7 @@
 
 import { ALL_MATCHES, TEAMS, teamGroup, type GroupLetter } from "./wc-data";
 import { effectiveScore, effectiveTeams } from "./wc-store";
+import { getLiveMatch } from "./wc-live";
 
 const DEFAULT_START_ELO = 1500;
 const HOST_BONUS = 80;
@@ -64,7 +65,15 @@ interface PlayedMatch {
 function collectPlayedMatches(): PlayedMatch[] {
   const out: PlayedMatch[] = [];
   for (const m of ALL_MATCHES) {
-    const score = effectiveScore(m.id);
+    let score = effectiveScore(m.id);
+    // Treat LIVE in-progress matches as if they ended right now, so rankings
+    // react to goals the moment they're scored.
+    if (!score) {
+      const live = getLiveMatch(m.id);
+      if (live && live.liveStatus === "LIVE") {
+        score = { home: live.liveScoreHome, away: live.liveScoreAway };
+      }
+    }
     if (!score) continue;
     const { home, away } = effectiveTeams(m);
     if (!home || !away) continue;
