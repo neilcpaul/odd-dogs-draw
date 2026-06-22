@@ -5,7 +5,18 @@ import { ALL_MATCHES, TEAMS, teamGroup, type GroupLetter } from "./wc-data";
 import { effectiveScore, effectiveTeams } from "./wc-store";
 
 const DEFAULT_START_ELO = 1500;
-const K = 60;
+const HOST_BONUS = 80;
+const HOSTS = new Set(["USA", "Canada", "Mexico"]);
+
+const STAGE_K: Record<string, number> = {
+  group: 50,
+  R32: 55,
+  R16: 60,
+  QF: 65,
+  SF: 70,
+  "3rd": 75,
+  Final: 75,
+};
 
 export interface TeamPower {
   team: string;
