@@ -122,3 +122,37 @@
     color: var(--color-foreground);
   }
 }
+
+/* Live Rankings: tactile team rows with kit-colour accent + hover glow */
+.team-row {
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.team-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--team-color, transparent);
+  transition: width 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
+}
+.team-row:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+.team-row:hover::before {
+  width: 5px;
+  filter: brightness(1.25);
+  box-shadow: 0 0 8px var(--team-color);
+}
+.team-row .team-name {
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+.team-row .team-name:hover {
+  color: var(--team-color);
+  text-shadow: 0 0 8px var(--team-color), 0 0 16px var(--team-color);
+}
+
