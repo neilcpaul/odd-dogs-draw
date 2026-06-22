@@ -68,6 +68,29 @@ const FLAGS: Record<string, string> = {
   "Türkiye": "🇹🇷", "Jordan": "🇯🇴", "Cape Verde": "🇨🇻", "Czechia": "🇨🇿",
 };
 
+// Primary kit / national colour per team (hex). Used for the accent bar and
+// hover glow on the Live Rankings table. Sensible defaults — easy to tweak.
+const TEAM_COLORS: Record<string, string> = {
+  "Argentina": "#6CACE4", "Brazil": "#F7DF00", "France": "#1E3A8A",
+  "England": "#FFFFFF", "Spain": "#C60B1E", "Germany": "#111111",
+  "Portugal": "#D32030", "Netherlands": "#FF6B1A", "Belgium": "#E30613",
+  "Italy": "#0066A2", "Croatia": "#E11D48", "Uruguay": "#5BA5DA",
+  "Colombia": "#FCD116", "Mexico": "#006847", "United States": "#3C3B6E",
+  "Canada": "#D52B1E", "Japan": "#0B2C5F", "South Korea": "#C8102E",
+  "Australia": "#FFCD00", "Senegal": "#00853F", "Morocco": "#C1272D",
+  "Côte d'Ivoire": "#FF8200", "Egypt": "#CE1126", "Tunisia": "#E70013",
+  "Algeria": "#006233", "Ghana": "#FCD116", "Cape Verde": "#003893",
+  "South Africa": "#007749", "DR Congo": "#3498DB", "Nigeria": "#008751",
+  "Switzerland": "#DA291C", "Austria": "#ED2939", "Türkiye": "#E30A17",
+  "Czechia": "#11457E", "Sweden": "#FECC00", "Norway": "#BA0C2F",
+  "Scotland": "#0065BD", "Bosnia & Herzegovina": "#FFCD00", "Poland": "#DC143C",
+  "Denmark": "#C60C30", "Iran": "#239F40", "Iraq": "#CE1126",
+  "Saudi Arabia": "#006C35", "Qatar": "#8D1B3D", "Jordan": "#000000",
+  "Uzbekistan": "#1EB53A", "Ecuador": "#FFD100", "Paraguay": "#D52B1E",
+  "Panama": "#005AA7", "New Zealand": "#000000", "Haiti": "#00209F",
+  "Curaçao": "#002B7F",
+};
+
 // Official FIFA ranking, 11 June 2026. Only rows for teams in this app are used.
 const FIFA_RANKS: Record<string, number> = {
   "Argentina": 1, "Spain": 2, "France": 3, "England": 4, "Portugal": 5,
