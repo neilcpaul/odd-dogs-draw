@@ -12,6 +12,7 @@ import {
 } from "@/lib/wc-store";
 import { knockoutAdvanceProbability, priceMatch, teamElo } from "@/lib/wc-probability";
 import { computeTeamPower } from "@/lib/wc-power";
+import { simulateTournament, type TeamSimProbs } from "@/lib/wc-simulation";
 import { MatchDetailProvider, useMatchDetail } from "@/components/MatchDetailModal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
