@@ -1825,6 +1825,7 @@ function MatchContextEditor() {
 function useSimProbs(): { probs: Record<string, TeamSimProbs> | null; loading: boolean } {
   const app = useAppState();
   const live = useLiveState();
+  const ctx = useContextState();
   const [probs, setProbs] = useState<Record<string, TeamSimProbs> | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -1844,7 +1845,7 @@ function useSimProbs(): { probs: Record<string, TeamSimProbs> | null; loading: b
       void id;
     }, 300);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [app, live]);
+  }, [app, live, ctx]);
   return { probs, loading };
 }
 
