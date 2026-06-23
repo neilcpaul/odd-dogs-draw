@@ -338,7 +338,6 @@ function Leaderboard({ currentName }: { currentName: string | null }) {
                   <td className="py-1 font-mono">{i + 1}</td>
                   <td className="py-1 font-semibold">
                     {p.name}
-                    {i === 0 && <span className="ml-1.5 text-[10px]">🏆 Oracle Slayer</span>}
                     {p.is_guest && <span className="ml-1.5 text-[10px] text-muted-foreground">(guest)</span>}
                   </td>
                   <td className="py-1 text-right font-mono tabular-nums">{fmtCoins(p.balance)}</td>
