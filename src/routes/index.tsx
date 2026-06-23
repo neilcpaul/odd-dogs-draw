@@ -137,7 +137,7 @@ function App() {
   const [focusPlayer, setFocusPlayer] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => { loadFromStorage(); initApi(); initLive(); setMounted(true); }, []);
+  useEffect(() => { loadFromStorage(); loadContextFromStorage(); initApi(); initLive(); setMounted(true); }, []);
 
   if (!mounted) return null;
 
