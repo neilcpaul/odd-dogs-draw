@@ -1815,9 +1815,6 @@ function MatchContextEditor() {
   );
 }
 
-
-}
-
 /* ---------------- POWER INDEX ---------------- */
 
 
