@@ -1942,6 +1942,9 @@ goalsA = Poisson(λA);  goalsB = Poisson(λB)`}</pre>
 
         <MatchContextEditor />
 
+        <PredictionBoard />
+
+
         <div className="overflow-x-auto -mx-5 px-5">
           <table className="text-sm table-fixed" style={{ width: "100%", minWidth: 760 }}>
             <thead>
