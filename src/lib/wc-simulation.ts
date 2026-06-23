@@ -8,6 +8,10 @@ import {
   TEAMS, type GroupLetter, type Match,
 } from "./wc-data";
 import { effectiveScore, getState } from "./wc-store";
+import {
+  contextDelta as computeContextDelta, getContextState,
+  refereeNoise, type ContextState,
+} from "./wc-context";
 import { computeTeamPower } from "./wc-power";
 
 const HOSTS = new Set(["United States", "Canada", "Mexico"]);
