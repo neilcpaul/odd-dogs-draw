@@ -19,6 +19,7 @@ import {
 } from "@/lib/wc-context";
 import { MatchDetailProvider, useMatchDetail } from "@/components/MatchDetailModal";
 import { PredictionBoard } from "@/components/PredictionBoard";
+import { BettingPanel } from "@/components/BettingPanel";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
