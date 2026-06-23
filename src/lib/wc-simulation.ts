@@ -8,6 +8,10 @@ import {
   TEAMS, type GroupLetter, type Match,
 } from "./wc-data";
 import { effectiveScore, getState } from "./wc-store";
+import {
+  contextDelta as computeContextDelta, getContextState,
+  refereeNoise, type ContextState,
+} from "./wc-context";
 import { computeTeamPower } from "./wc-power";
 
 const HOSTS = new Set(["United States", "Canada", "Mexico"]);
@@ -68,12 +72,15 @@ function hostAdj(team: string): number {
 
 function simMatch(
   teamA: string, teamB: string, elo: Record<string, number>, knockout: boolean,
+  ctxDelta: number,
 ): { gA: number; gB: number; winnerA: boolean } {
   const eloA = elo[teamA] ?? 1500;
   const eloB = elo[teamB] ?? 1500;
   const hA = hostAdj(teamA);
   const hB = hostAdj(teamB);
-  const supremacy = ((eloA + hA) - (eloB + hB)) / 200;
+  // Referee variance: fresh ±25-Elo noise applied to every match in every run.
+  const noise = refereeNoise();
+  const supremacy = ((eloA + hA) - (eloB + hB) + ctxDelta + noise) / 200;
   const lambdaA = Math.max(0.2, 1.35 + supremacy / 2);
   const lambdaB = Math.max(0.2, 1.35 - supremacy / 2);
   const gA = poisson(lambdaA);
@@ -82,8 +89,9 @@ function simMatch(
   if (gA > gB) winnerA = true;
   else if (gB > gA) winnerA = false;
   else if (knockout) {
-    // shootout: Elo-weighted coin flip with host adjustment.
-    const pA = 1 / (1 + Math.pow(10, ((eloB + hB) - (eloA + hA)) / 400));
+    // Shootout: Elo-weighted coin flip with host adjustment + context delta
+    // (no extra ref noise — pen shootouts are already lottery-level random).
+    const pA = 1 / (1 + Math.pow(10, ((eloB + hB) - (eloA + hA) - ctxDelta) / 400));
     winnerA = Math.random() < pA;
   } else {
     winnerA = false; // ignored for groups; result is a draw
@@ -97,6 +105,7 @@ interface PreparedGroupMatch {
   home: string;
   away: string;
   played?: { h: number; a: number };
+  ctxDelta: number;  // precomputed from snapshot (constant across runs)
 }
 
 interface PreparedKnockoutOverride {
@@ -116,6 +125,10 @@ interface SimInputs {
   groupMatches: Record<GroupLetter, PreparedGroupMatch[]>;
   // matchId -> override (only when both slots filled AND score recorded)
   knockoutOverrides: Record<string, { home: string; away: string; winnerHome: boolean }>;
+  // matchId -> venue (stadium name) for every knockout slot
+  knockoutVenues: Record<string, string>;
+  // Snapshot of context state — used to compute per-pair deltas in knockouts
+  ctxState: ContextState;
   teams: string[];
 }
 
@@ -125,19 +138,25 @@ function prepareInputs(): SimInputs {
   for (const p of power) elo[p.team] = p.liveElo;
   for (const t of Object.keys(TEAMS)) if (elo[t] === undefined) elo[t] = 1500;
 
+  const ctxState = getContextState();
+
   const groupMatches = {} as Record<GroupLetter, PreparedGroupMatch[]>;
   for (const g of GROUP_LETTERS) groupMatches[g] = [];
   for (const m of GROUP_MATCHES) {
     const score = effectiveScore(m.id);
+    const d = computeContextDelta(m.home, m.away, m.venue, ctxState).total;
     groupMatches[m.group!].push({
       m, home: m.home, away: m.away,
       played: score ? { h: score.home, a: score.away } : undefined,
+      ctxDelta: d,
     });
   }
 
   const knockoutOverrides: Record<string, { home: string; away: string; winnerHome: boolean }> = {};
+  const knockoutVenues: Record<string, string> = {};
   const slots = getState().knockoutSlots;
   for (const m of KNOCKOUT_MATCHES) {
+    knockoutVenues[m.id] = m.venue;
     const ko = slots[m.id];
     if (!ko?.home || !ko?.away) continue;
     const score = effectiveScore(m.id);
@@ -148,7 +167,7 @@ function prepareInputs(): SimInputs {
     };
   }
 
-  return { elo, groupMatches, knockoutOverrides, teams: Object.keys(TEAMS) };
+  return { elo, groupMatches, knockoutOverrides, knockoutVenues, ctxState, teams: Object.keys(TEAMS) };
 }
 
 // ---------- per-run group simulation ----------
@@ -270,7 +289,7 @@ function runGroups(inputs: SimInputs): {
       if (pm.played) {
         h = pm.played.h; a = pm.played.a;
       } else {
-        const r = simMatch(pm.home, pm.away, inputs.elo, false);
+        const r = simMatch(pm.home, pm.away, inputs.elo, false, pm.ctxDelta);
         h = r.gA; a = r.gB;
       }
       teamStats[pm.home].gf += h;
@@ -348,7 +367,9 @@ function simKnockoutPair(
   const ov = inputs.knockoutOverrides[matchId];
   if (ov && ov.home === a && ov.away === b) return ov.winnerHome ? a : b;
   if (ov && ov.home === b && ov.away === a) return ov.winnerHome ? b : a;
-  const r = simMatch(a, b, inputs.elo, true);
+  const venue = inputs.knockoutVenues[matchId] ?? "";
+  const d = computeContextDelta(a, b, venue, inputs.ctxState).total;
+  const r = simMatch(a, b, inputs.elo, true, d);
   return r.winnerA ? a : b;
 }
 
