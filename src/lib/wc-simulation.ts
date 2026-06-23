@@ -289,7 +289,7 @@ function runGroups(inputs: SimInputs): {
       if (pm.played) {
         h = pm.played.h; a = pm.played.a;
       } else {
-        const r = simMatch(pm.home, pm.away, inputs.elo, false);
+        const r = simMatch(pm.home, pm.away, inputs.elo, false, pm.ctxDelta);
         h = r.gA; a = r.gB;
       }
       teamStats[pm.home].gf += h;
