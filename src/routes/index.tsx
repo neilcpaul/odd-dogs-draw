@@ -13,6 +13,12 @@ import {
 import { knockoutAdvanceProbability, priceMatch, teamElo } from "@/lib/wc-probability";
 import { computeTeamPower } from "@/lib/wc-power";
 import { simulateTournament, type TeamSimProbs } from "@/lib/wc-simulation";
+import {
+  loadContextFromStorage, useContextState, getTeamContext, getVenueContext,
+  setTeamContext, setVenueContext, resetAllContext, contextDelta,
+  NEUTRAL_TEAM_CTX, NEUTRAL_VENUE_CTX,
+} from "@/lib/wc-context";
+import { Input } from "@/components/ui/input";
 import { MatchDetailProvider, useMatchDetail } from "@/components/MatchDetailModal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
