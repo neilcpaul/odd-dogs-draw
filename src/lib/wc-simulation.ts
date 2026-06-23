@@ -72,12 +72,15 @@ function hostAdj(team: string): number {
 
 function simMatch(
   teamA: string, teamB: string, elo: Record<string, number>, knockout: boolean,
+  ctxDelta: number,
 ): { gA: number; gB: number; winnerA: boolean } {
   const eloA = elo[teamA] ?? 1500;
   const eloB = elo[teamB] ?? 1500;
   const hA = hostAdj(teamA);
   const hB = hostAdj(teamB);
-  const supremacy = ((eloA + hA) - (eloB + hB)) / 200;
+  // Referee variance: fresh ±25-Elo noise applied to every match in every run.
+  const noise = refereeNoise();
+  const supremacy = ((eloA + hA) - (eloB + hB) + ctxDelta + noise) / 200;
   const lambdaA = Math.max(0.2, 1.35 + supremacy / 2);
   const lambdaB = Math.max(0.2, 1.35 - supremacy / 2);
   const gA = poisson(lambdaA);
@@ -86,8 +89,9 @@ function simMatch(
   if (gA > gB) winnerA = true;
   else if (gB > gA) winnerA = false;
   else if (knockout) {
-    // shootout: Elo-weighted coin flip with host adjustment.
-    const pA = 1 / (1 + Math.pow(10, ((eloB + hB) - (eloA + hA)) / 400));
+    // Shootout: Elo-weighted coin flip with host adjustment + context delta
+    // (no extra ref noise — pen shootouts are already lottery-level random).
+    const pA = 1 / (1 + Math.pow(10, ((eloB + hB) - (eloA + hA) - ctxDelta) / 400));
     winnerA = Math.random() < pA;
   } else {
     winnerA = false; // ignored for groups; result is a draw
