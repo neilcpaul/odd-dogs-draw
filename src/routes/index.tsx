@@ -1639,6 +1639,184 @@ function ProjectedSlotRow({ slot }: { slot: ProjectedSlot }) {
     </div>
   );
 
+
+function MatchContextEditor() {
+  useContextState();
+  const [open, setOpen] = useState(false);
+  const allTeams = useMemo(() => Object.keys(TEAMS).sort(), []);
+  const allVenues = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of ALL_MATCHES) if (m.venue) set.add(m.venue);
+    return Array.from(set).sort();
+  }, []);
+  const [teamQuery, setTeamQuery] = useState("");
+  const filteredTeams = useMemo(() => {
+    const q = teamQuery.trim().toLowerCase();
+    if (!q) return allTeams;
+    return allTeams.filter((t) => t.toLowerCase().includes(q));
+  }, [allTeams, teamQuery]);
+
+  return (
+    <div className="mb-4 rounded-md border border-border/60 bg-secondary/20">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-[11px] font-semibold text-primary hover:bg-secondary/40 transition rounded-md"
+      >
+        <span className="inline-flex items-center gap-1">
+          <Info className="w-3 h-3" />
+          Match-context adjustments (sim only)
+        </span>
+        <span className="text-muted-foreground">{open ? "▾" : "▸"}</span>
+      </button>
+      {open && (
+        <div className="p-3 pt-0 space-y-4 text-[11px]">
+          <p className="text-muted-foreground">
+            These tweak the per-match expected-goals inside the 10 000-run simulation only.
+            They never touch stored Elo, Power Index, or group-table tiebreaks. Defaults are
+            neutral — nothing changes until you fill values in. The simulation also adds a fresh
+            ±25-Elo referee variance to every match every run (always on).
+          </p>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-[10px] uppercase tracking-wide font-bold text-primary">Per-team</div>
+              <input
+                type="text"
+                value={teamQuery}
+                onChange={(e) => setTeamQuery(e.target.value)}
+                placeholder="Filter teams…"
+                className="h-7 w-40 rounded border border-border bg-background px-2 text-[11px]"
+              />
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-wide text-muted-foreground border-b border-border">
+                    <th className="text-left font-bold py-1 pr-2">Team</th>
+                    <th className="text-right font-bold py-1 pr-2" title="Days since last match">Rest d</th>
+                    <th className="text-right font-bold py-1 pr-2" title="km travelled to this venue since last match">Travel km</th>
+                    <th className="text-center font-bold py-1 pr-2" title="Acclimatised to altitude">Alt-team</th>
+                    <th className="text-center font-bold py-1 pr-2" title="Style relies on high pressing">High press</th>
+                    <th className="text-right font-bold py-1" title="Elite players missing (0–3)">Stars out</th>
+                  </tr>
+                </thead>
+                <tbody className="max-h-64">
+                  {filteredTeams.map((team) => {
+                    const ctx = getTeamContext(team);
+                    const dirty =
+                      ctx.restDays !== 0 || ctx.travelKm !== 0 ||
+                      ctx.altitudeTeam || ctx.highPress || ctx.starsMissing !== 0;
+                    return (
+                      <tr key={team} className={`border-b border-border/30 ${dirty ? "bg-primary/5" : ""}`}>
+                        <td className="py-1 pr-2 whitespace-nowrap">
+                          <span className="mr-1">{TEAMS[team]?.flag ?? "🏳️"}</span>
+                          {team}
+                        </td>
+                        <td className="py-1 pr-2 text-right">
+                          <input
+                            type="number"
+                            value={ctx.restDays}
+                            onChange={(e) => setTeamContext(team, { restDays: Number(e.target.value) || 0 })}
+                            className="h-7 w-14 rounded border border-border bg-background px-1 text-right tabular-nums"
+                          />
+                        </td>
+                        <td className="py-1 pr-2 text-right">
+                          <input
+                            type="number"
+                            value={ctx.travelKm}
+                            onChange={(e) => setTeamContext(team, { travelKm: Number(e.target.value) || 0 })}
+                            className="h-7 w-20 rounded border border-border bg-background px-1 text-right tabular-nums"
+                          />
+                        </td>
+                        <td className="py-1 pr-2 text-center">
+                          <Switch
+                            checked={ctx.altitudeTeam}
+                            onCheckedChange={(v) => setTeamContext(team, { altitudeTeam: v })}
+                          />
+                        </td>
+                        <td className="py-1 pr-2 text-center">
+                          <Switch
+                            checked={ctx.highPress}
+                            onCheckedChange={(v) => setTeamContext(team, { highPress: v })}
+                          />
+                        </td>
+                        <td className="py-1 text-right">
+                          <input
+                            type="number" min={0} max={3} step={1}
+                            value={ctx.starsMissing}
+                            onChange={(e) => {
+                              const n = Math.max(0, Math.min(3, Math.round(Number(e.target.value) || 0)));
+                              setTeamContext(team, { starsMissing: n });
+                            }}
+                            className="h-7 w-14 rounded border border-border bg-background px-1 text-right tabular-nums"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div>
+            <div className="text-[10px] uppercase tracking-wide font-bold text-primary mb-1">Per-venue</div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-wide text-muted-foreground border-b border-border">
+                    <th className="text-left font-bold py-1 pr-2">Venue</th>
+                    <th className="text-right font-bold py-1 pr-2" title="Altitude (m). Bites above 1500 m.">Altitude m</th>
+                    <th className="text-center font-bold py-1" title="Harsh heat at kickoff">Harsh heat</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allVenues.map((venue) => {
+                    const v = getVenueContext(venue);
+                    const dirty = v.altitude !== 0 || v.harshHeat;
+                    return (
+                      <tr key={venue} className={`border-b border-border/30 ${dirty ? "bg-primary/5" : ""}`}>
+                        <td className="py-1 pr-2">{venue}</td>
+                        <td className="py-1 pr-2 text-right">
+                          <input
+                            type="number"
+                            value={v.altitude}
+                            onChange={(e) => setVenueContext(venue, { altitude: Number(e.target.value) || 0 })}
+                            className="h-7 w-20 rounded border border-border bg-background px-1 text-right tabular-nums"
+                          />
+                        </td>
+                        <td className="py-1 text-center">
+                          <Switch
+                            checked={v.harshHeat}
+                            onCheckedChange={(b) => setVenueContext(venue, { harshHeat: b })}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => { if (confirm("Reset all match-context values to neutral?")) resetAllContext(); }}
+            >
+              Reset all to neutral
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 }
 
 /* ---------------- POWER INDEX ---------------- */
