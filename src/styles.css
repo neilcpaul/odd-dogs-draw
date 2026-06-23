@@ -176,4 +176,15 @@
   will-change: box-shadow;
 }
 
+/* Decorative sparkles — opacity + scale only, never layout. */
+@keyframes oracle-twinkle {
+  0%, 100% { opacity: 0.15; transform: scale(0.85); }
+  50%      { opacity: 0.9;  transform: scale(1.1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prediction-board { animation: none; }
+  .oracle-sparkles svg { animation: none !important; opacity: 0.35 !important; }
+}
+
 
