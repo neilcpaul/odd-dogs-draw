@@ -21,6 +21,7 @@ import {
   MIN_STAKE,
   type Bet,
 } from "@/lib/wc-betting";
+import { rainCoins } from "@/lib/coin-rain";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -154,7 +155,10 @@ function BetSlip({
     });
     setBusy(false);
     if (!res.ok) toast.error(res.error ?? "Bet failed");
-    else toast.success(`Locked: ${stake} on ${sel} @ ${resultOdds.toFixed(2)}x`);
+    else {
+      rainCoins();
+      toast.success(`Locked: ${stake} on ${sel} @ ${resultOdds.toFixed(2)}x`);
+    }
   }
   async function submitScore() {
     if (busy) return;
@@ -170,7 +174,10 @@ function BetSlip({
     });
     setBusy(false);
     if (!res.ok) toast.error(res.error ?? "Bet failed");
-    else toast.success(`Locked: ${scoreStake} on ${sel} @ ${scoreOdds.toFixed(2)}x`);
+    else {
+      rainCoins();
+      toast.success(`Locked: ${scoreStake} on ${sel} @ ${scoreOdds.toFixed(2)}x`);
+    }
   }
 
   if (locked) {
