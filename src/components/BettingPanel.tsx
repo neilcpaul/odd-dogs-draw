@@ -15,6 +15,7 @@ import {
   ensurePlayer,
   placeBet,
   settleBet,
+  withdrawBet,
   priceToOdds,
   STARTING_BANKROLL,
   MIN_STAKE,
@@ -451,12 +452,27 @@ export function BettingPanel() {
                             ? b.selection === "home" ? home : b.selection === "away" ? away : "Draw"
                             : `${b.selection}`;
                         const tag =
-                          b.status === "won" ? "✅" : b.status === "lost" ? "❌" : "⏳";
+                          b.status === "won" ? "✅" : b.status === "lost" ? "❌" : b.status === "withdrawn" ? "↩️" : "⏳";
+                        const canWithdraw = b.status === "pending" && !locked;
                         return (
-                          <div key={b.id} className="text-[10px] font-mono text-muted-foreground flex justify-between gap-2">
+                          <div key={b.id} className="text-[10px] font-mono text-muted-foreground flex justify-between gap-2 items-center">
                             <span>{tag} {b.bet_type === "score" ? "Score " : ""}{label} · {fmtCoins(b.stake)} @ {b.locked_odds.toFixed(2)}x</span>
-                            <span className={b.status === "won" ? "text-emerald-400" : ""}>
-                              {b.status === "won" ? `+${fmtCoins(b.payout)}` : b.status === "lost" ? "—" : ""}
+                            <span className="flex items-center gap-1.5">
+                              <span className={b.status === "won" ? "text-emerald-400" : ""}>
+                                {b.status === "won" ? `+${fmtCoins(b.payout)}` : b.status === "lost" ? "—" : b.status === "withdrawn" ? "refunded" : ""}
+                              </span>
+                              {canWithdraw && (
+                                <button
+                                  onClick={async () => {
+                                    const res = await withdrawBet(b);
+                                    if (!res.ok) toast.error(res.error ?? "Withdraw failed");
+                                    else toast.success(`Refunded ${fmtCoins(b.stake)} coins`);
+                                  }}
+                                  className="text-[10px] px-1.5 py-0.5 rounded border border-fuchsia-300/40 text-fuchsia-200 hover:bg-fuchsia-500/20 hover:text-fuchsia-50 transition-colors cursor-pointer"
+                                >
+                                  Withdraw
+                                </button>
+                              )}
                             </span>
                           </div>
                         );

@@ -23,7 +23,7 @@ export interface Bet {
   selection: string;
   stake: number;
   locked_odds: number;
-  status: "pending" | "won" | "lost";
+  status: "pending" | "won" | "lost" | "withdrawn";
   payout: number;
   placed_at: string;
   settled_at: string | null;
@@ -251,6 +251,34 @@ export async function settleBet(
     payout,
     player: players.find((p) => p.name === bet.player_name),
   };
+}
+
+/** Withdraw a pending bet and refund the stake. Race-safe via WHERE status='pending'. */
+export async function withdrawBet(bet: Bet): Promise<{ ok: boolean; error?: string }> {
+  if (bet.status !== "pending") return { ok: false, error: "Bet already settled" };
+  const { data, error } = await supabase
+    .from("bets")
+    .update({ status: "withdrawn", settled_at: new Date().toISOString() })
+    .eq("id", bet.id)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: false, error: "Bet already settled" };
+
+  const { data: pl } = await supabase
+    .from("betting_players")
+    .select("balance")
+    .eq("name", bet.player_name)
+    .maybeSingle();
+  if (pl) {
+    await supabase
+      .from("betting_players")
+      .update({ balance: Number(pl.balance) + bet.stake })
+      .eq("name", bet.player_name);
+  }
+  await Promise.all([refetchPlayers(), refetchBets()]);
+  return { ok: true };
 }
 
 export function useRefetchAll() {
