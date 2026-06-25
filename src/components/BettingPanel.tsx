@@ -22,14 +22,6 @@ import {
   type Bet,
 } from "@/lib/wc-betting";
 import { rainCoins } from "@/lib/coin-rain";
-// (rest of imports below unchanged)
-// __REMOVE_BELOW__
-  withdrawBet,
-  priceToOdds,
-  STARTING_BANKROLL,
-  MIN_STAKE,
-  type Bet,
-} from "@/lib/wc-betting";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
