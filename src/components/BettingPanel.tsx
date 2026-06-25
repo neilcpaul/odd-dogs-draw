@@ -15,6 +15,7 @@ import {
   ensurePlayer,
   placeBet,
   settleBet,
+  withdrawBet,
   priceToOdds,
   STARTING_BANKROLL,
   MIN_STAKE,
