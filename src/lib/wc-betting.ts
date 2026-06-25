@@ -23,7 +23,7 @@ export interface Bet {
   selection: string;
   stake: number;
   locked_odds: number;
-  status: "pending" | "won" | "lost";
+  status: "pending" | "won" | "lost" | "withdrawn";
   payout: number;
   placed_at: string;
   settled_at: string | null;
