@@ -55,7 +55,15 @@ function PotBadge({ pot, className = "" }: { pot: Pot; className?: string }) {
   );
 }
 
-function TeamChip({ team, showOwner = false }: { team: string; showOwner?: boolean }) {
+function TeamChip({
+  team,
+  showOwner = false,
+  showPot = true,
+}: {
+  team: string;
+  showOwner?: boolean;
+  showPot?: boolean;
+}) {
   const t = TEAMS[team];
   const owner = teamOwner(team);
   if (!team) return <span className="text-muted-foreground italic">TBD</span>;
@@ -63,7 +71,7 @@ function TeamChip({ team, showOwner = false }: { team: string; showOwner?: boole
     <>
       <span className="text-lg leading-none">{t?.flag ?? "🏳️"}</span>
       <span className="font-semibold">{team}</span>
-      {t && <PotBadge pot={t.pot} />}
+      {t && showPot && <PotBadge pot={t.pot} />}
       {showOwner && owner && <span className="text-xs text-muted-foreground">· {owner}</span>}
     </>
   );
@@ -537,6 +545,8 @@ function FixtureRow({ match }: { match: Match }) {
 
   const ownerH = teamOwner(e.home);
   const ownerA = teamOwner(e.away);
+  const homePot = TEAMS[e.home]?.pot;
+  const awayPot = TEAMS[e.away]?.pot;
 
   const stageLabel = match.stage === "group" ? `Group ${match.group}` : match.stage;
 
@@ -572,8 +582,13 @@ function FixtureRow({ match }: { match: Match }) {
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         <div className="text-right">
-          <TeamChip team={e.home} />
-          {ownerH && <div className="text-[10px] text-muted-foreground mt-0.5">{ownerH}</div>}
+          <TeamChip team={e.home} showPot={false} />
+          {ownerH && (
+            <div className="mt-0.5 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
+              <span>{ownerH}</span>
+              {homePot && <PotBadge pot={homePot} />}
+            </div>
+          )}
         </div>
         <div className="flex items-center justify-center gap-2 font-black tabular-nums text-lg min-w-[80px]">
           {ds ? (
@@ -587,8 +602,13 @@ function FixtureRow({ match }: { match: Match }) {
           )}
         </div>
         <div className="text-left">
-          <TeamChip team={e.away} />
-          {ownerA && <div className="text-[10px] text-muted-foreground mt-0.5">{ownerA}</div>}
+          <TeamChip team={e.away} showPot={false} />
+          {ownerA && (
+            <div className="mt-0.5 flex items-center justify-start gap-1 text-[10px] text-muted-foreground">
+              <span>{ownerA}</span>
+              {awayPot && <PotBadge pot={awayPot} />}
+            </div>
+          )}
         </div>
       </div>
       {ds?.played && (
