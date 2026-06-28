@@ -633,15 +633,18 @@ function PlayersTab({ focusPlayer, onConsumeFocus }: { focusPlayer: string | nul
               {player.teams.map(({ team, pot }) => {
                 const t = p.perTeam[team];
                 const elim = isTeamEliminated(team);
+                const nextMatch = elim ? null : nextMatchForTeam(team);
                 const wcUse = used.find((u) => u.pot === pot);
                 const wcMatch = wcUse ? GROUP_MATCHES.find((m) => m.id === wcUse.matchId) : undefined;
                 const wcUsed = !!wcMatch
                   && (wcMatch.home === team || wcMatch.away === team)
                   && !!state.scores[wcMatch.id]?.played;
                 return (
-                  <div key={team} className="rounded-md bg-secondary/40 px-3 py-2">
+                  <div key={team} className={`rounded-md px-3 py-2 ${elim ? "bg-secondary/20 opacity-60" : "bg-secondary/40"}`}>
                     <div className="flex items-center justify-between flex-wrap gap-1">
-                      <TeamChip team={team} />
+                      <span className={elim ? "text-muted-foreground line-through decoration-muted-foreground/70" : ""}>
+                        <TeamChip team={team} />
+                      </span>
                       <div className="flex items-center gap-2 text-[11px]">
                         {(pot === 3 || pot === 4) && (
                           <span className={`px-1.5 py-0.5 rounded ${wcUsed ? "bg-primary text-primary-foreground font-bold" : "bg-muted text-muted-foreground"}`}>
@@ -649,12 +652,12 @@ function PlayersTab({ focusPlayer, onConsumeFocus }: { focusPlayer: string | nul
                           </span>
                         )}
                         {elim && <span className="px-1.5 py-0.5 rounded bg-destructive/20 text-destructive">Eliminated</span>}
-                        <span className="font-bold text-primary tabular-nums">{t?.total ?? 0}</span>
+                        <span className={`font-bold tabular-nums ${elim ? "text-muted-foreground" : "text-primary"}`}>{t?.total ?? 0}</span>
                       </div>
                     </div>
-                    {t && t.matches.length > 0 && (
+                    {((t && t.matches.length > 0) || nextMatch) && (
                       <div className="mt-1.5 space-y-0.5">
-                        {t.matches.map(({ match, points, live }) => {
+                        {t?.matches.map(({ match, points, live }) => {
                           const e = effectiveTeams(match);
                           const opp = e.home === team ? e.away : e.home;
                           const ds = displayScore(match.id);
@@ -671,6 +674,7 @@ function PlayersTab({ focusPlayer, onConsumeFocus }: { focusPlayer: string | nul
                             />
                           );
                         })}
+                        {nextMatch && <NextMatchRow next={nextMatch} />}
                       </div>
                     )}
                   </div>
@@ -700,6 +704,70 @@ function MatchRow({ matchId, label, points, hasWC, live }: { matchId: string; la
       </span>
       <span className={`font-bold ${live ? "italic text-amber-400" : "text-primary"}`}>
         {live ? "~" : "+"}{points}{hasWC ? " ⚡" : ""}
+      </span>
+    </button>
+  );
+}
+
+type PlayerNextMatch = {
+  match: Match;
+  opponent: string | null;
+  opponentDescription: string;
+  stageLabel: string;
+};
+
+function playerMatchStageLabel(match: Match): string {
+  if (match.stage === "group") return `Group ${match.group}`;
+  return ({
+    R32: "Round of 32",
+    R16: "Round of 16",
+    QF: "Quarter-finals",
+    SF: "Semi-finals",
+    "3rd": "Third-place",
+    Final: "Final",
+  } as Record<string, string>)[match.stage] ?? match.stage;
+}
+
+function nextMatchForTeam(team: string): PlayerNextMatch | null {
+  const direct = ALL_MATCHES
+    .filter((match) => {
+      const e = effectiveTeams(match);
+      return (e.home === team || e.away === team) && !displayScore(match.id)?.played;
+    })
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+
+  if (direct) {
+    const e = effectiveTeams(direct);
+    const opponent = e.home === team ? e.away : e.home;
+    return {
+      match: direct,
+      opponent: opponent || null,
+      opponentDescription: opponent || "TBD",
+      stageLabel: playerMatchStageLabel(direct),
+    };
+  }
+
+  return null;
+}
+
+function NextMatchRow({ next }: { next: PlayerNextMatch }) {
+  const { open } = useMatchDetail();
+  const opponent = next.opponent
+    ? `${TEAMS[next.opponent]?.flag ?? ""} ${next.opponent}`
+    : next.opponentDescription;
+  return (
+    <button
+      type="button"
+      onClick={() => open(next.match.id)}
+      className="w-full flex items-center justify-between gap-2 text-[11px] text-muted-foreground hover:text-foreground transition text-left"
+      title="Next matchup"
+    >
+      <span className="min-w-0 truncate flex items-center gap-1">
+        <span className="rounded bg-emerald-500/15 text-emerald-400 px-1 py-0 text-[9px] font-black">NEXT</span>
+        <span className="truncate">{next.stageLabel} vs {opponent}</span>
+      </span>
+      <span className="shrink-0 text-right text-[10px] font-semibold text-muted-foreground">
+        <LocalTime iso={next.match.date} />
       </span>
     </button>
   );
