@@ -136,6 +136,11 @@ function matchLocation(match: Match): string {
   return [match.venue, match.city].filter(Boolean).join(", ");
 }
 
+function compareMatchesByKickoff(a: Match, b: Match): number {
+  return new Date(a.date).getTime() - new Date(b.date).getTime()
+    || a.id.localeCompare(b.id);
+}
+
 
 
 function App() {
@@ -442,7 +447,7 @@ function Fixtures() {
       const ds = displayScore(m.id);
       if (!showCompleted && ds?.played) return false;
       return true;
-    });
+    }).sort(compareMatchesByKickoff);
   }, [stage, player, team, showCompleted, liveState]);
 
   return (
