@@ -467,10 +467,31 @@ function MiniResult({ match }: { match: Match }) {
   const ds = displayScore(match.id);
   const e = effectiveTeams(match);
   const live = useLiveMatch(match.id);
+  const of = useOFEnrichment(match.id);
   const { open } = useMatchDetail();
   const homeScorers = live?.homeScorers ?? [];
   const awayScorers = live?.awayScorers ?? [];
   const hasScorers = homeScorers.length + awayScorers.length > 0;
+
+  const aet = !!of?.wentToExtraTime;
+  const pens = of?.wentToPenalties
+    ? { home: of.penaltiesHome ?? 0, away: of.penaltiesAway ?? 0 }
+    : null;
+  let winnerSide: "home" | "away" | null = of?.winner ?? null;
+  if (!winnerSide && ds) {
+    if (ds.home > ds.away) winnerSide = "home";
+    else if (ds.away > ds.home) winnerSide = "away";
+  }
+  const isGroup = match.stage === "group";
+  const isDraw = isGroup && !winnerSide && ds && ds.home === ds.away;
+  const winMark = (
+    <span className="ml-1 inline-flex items-center justify-center rounded bg-emerald-500/20 text-emerald-300 px-1 text-[9px] font-black leading-none">
+      W
+    </span>
+  );
+  const homeCls = winnerSide === "home" ? "font-extrabold text-foreground drop-shadow-[0_0_4px_rgba(16,185,129,0.4)]" : "";
+  const awayCls = winnerSide === "away" ? "font-extrabold text-foreground drop-shadow-[0_0_4px_rgba(16,185,129,0.4)]" : "";
+
   return (
     <div
       role="button"
@@ -479,11 +500,33 @@ function MiniResult({ match }: { match: Match }) {
       onKeyDown={(ev) => { if (ev.key === "Enter") open(match.id); }}
       className="rounded-md bg-secondary/40 px-3 py-2 text-sm cursor-pointer hover:bg-secondary/70 transition"
     >
-      <div className="text-[10px] text-muted-foreground mb-0.5"><LocalTime iso={match.date} /></div>
+      <div className="text-[10px] text-muted-foreground mb-0.5 flex items-center justify-between">
+        <LocalTime iso={match.date} />
+        {isDraw && <span className="text-[9px] font-bold tracking-wide text-muted-foreground">DRAW</span>}
+      </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 gap-y-0.5">
-        <TeamChip team={e.home} />
-        <span className="font-black text-primary tabular-nums row-span-2 self-center">{ds?.home ?? 0}–{ds?.away ?? 0}</span>
-        <div className="justify-self-end"><TeamChip team={e.away} /></div>
+        <span className={`inline-flex items-center min-w-0 ${homeCls}`}>
+          <TeamChip team={e.home} />
+          {winnerSide === "home" && winMark}
+        </span>
+        <span className="row-span-2 self-center text-center">
+          <span className="font-black text-primary tabular-nums">{ds?.home ?? 0}–{ds?.away ?? 0}</span>
+          {aet && <span className="ml-1 text-[9px] font-bold text-muted-foreground">(AET)</span>}
+          {pens && (
+            <div className="text-[9px] text-muted-foreground font-semibold mt-0.5">
+              Pens:{" "}
+              <span className={pens.home > pens.away ? "text-emerald-300 font-extrabold" : ""}>{pens.home}</span>
+              <span className="mx-0.5">–</span>
+              <span className={pens.away > pens.home ? "text-emerald-300 font-extrabold" : ""}>{pens.away}</span>
+            </div>
+          )}
+        </span>
+        <div className="justify-self-end">
+          <span className={`inline-flex items-center ${awayCls}`}>
+            {winnerSide === "away" && winMark}
+            <TeamChip team={e.away} />
+          </span>
+        </div>
         {hasScorers && (
           <>
             <div className="text-[10px] text-muted-foreground truncate">⚽ {homeScorers.join(" · ")}</div>
