@@ -878,14 +878,8 @@ type PlayerNextMatch = {
 
 function playerMatchStageLabel(match: Match): string {
   if (match.stage === "group") return `Group ${match.group}`;
-  return ({
-    R32: "Round of 32",
-    R16: "Round of 16",
-    QF: "Quarter-finals",
-    SF: "Semi-finals",
-    "3rd": "Third-place",
-    Final: "Final",
-  } as Record<string, string>)[match.stage] ?? match.stage;
+  if (match.stage === "3rd") return "3rd";
+  return match.stage; // R32, R16, QF, SF, Final
 }
 
 function nextMatchForTeam(team: string): PlayerNextMatch | null {
