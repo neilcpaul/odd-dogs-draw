@@ -1650,7 +1650,7 @@ function BracketTeam({ team, projected }: { team: string; projected: boolean }) 
 
 function Bracket() {
   const state = useAppState();
-  const [showGroupStandings, setShowGroupStandings] = useState(false);
+  
   // recompute on score / knockout-slot changes
   const { groupProbs, standings, rounds } = useMemo(() => {
     void state;
