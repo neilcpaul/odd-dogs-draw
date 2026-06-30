@@ -7,7 +7,7 @@ import {
   PLAYERS, POT_LABEL_CLASS, TEAMS, teamOwner, type GroupLetter, type Match, type Pot,
 } from "@/lib/wc-data";
 import {
-  computeAllTotals, displayScore, effectiveTeams, getState, isMatchLive,
+  computeAllTotals, displayScore, effectiveScore, effectiveTeams, getState, isMatchLive,
   isTeamEliminated, loadFromStorage, nextUpcoming, recentResults, useAppState,
 } from "@/lib/wc-store";
 import { knockoutAdvanceProbability, priceMatch, teamElo } from "@/lib/wc-probability";
@@ -33,7 +33,7 @@ import { Label } from "@/components/ui/label";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Trophy, Download, Flame, Calendar, RefreshCw, Info, Zap } from "lucide-react";
+import { Trophy, Download, Flame, Calendar, RefreshCw, Info, Zap, ChevronDown, ChevronRight } from "lucide-react";
 
 
 export const Route = createFileRoute("/")({
@@ -1648,9 +1648,63 @@ function BracketTeam({ team, projected }: { team: string; projected: boolean }) 
   );
 }
 
+function CollapsibleStageCard({
+  title,
+  status,
+  hint,
+  defaultOpen,
+  children,
+}: {
+  title: string;
+  status: "live" | "completed" | "upcoming";
+  hint?: React.ReactNode;
+  defaultOpen: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const statusLabel =
+    status === "completed" ? "completed" : status === "live" ? "live" : "upcoming";
+  const statusClass =
+    status === "completed"
+      ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+      : status === "live"
+      ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
+      : "bg-secondary/40 text-muted-foreground border-border";
+  return (
+    <Card className="p-4 bg-card border-border">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between gap-2 text-left"
+        aria-expanded={open}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          {open ? (
+            <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
+          )}
+          <h3 className="font-bold truncate">{title}</h3>
+          <span
+            className={`text-[10px] uppercase tracking-wide font-bold px-1.5 py-0.5 rounded border ${statusClass}`}
+          >
+            {statusLabel}
+          </span>
+        </div>
+        {hint && (
+          <span className="hidden sm:inline text-[10px] text-muted-foreground italic text-right shrink-0 max-w-[55%]">
+            {hint}
+          </span>
+        )}
+      </button>
+      {open && <div className="mt-3">{children}</div>}
+    </Card>
+  );
+}
+
 function Bracket() {
   const state = useAppState();
-  
+
   // recompute on score / knockout-slot changes
   const { groupProbs, standings, rounds } = useMemo(() => {
     void state;
@@ -1663,6 +1717,15 @@ function Bracket() {
     };
   }, [state.scores, state.knockoutSlots]);
 
+  const stageStatus = (matches: Match[]): "live" | "completed" | "upcoming" => {
+    if (matches.length === 0) return "upcoming";
+    const played = matches.filter((m) => !!effectiveScore(m.id)).length;
+    if (played === 0) return "upcoming";
+    if (played === matches.length) return "completed";
+    return "live";
+  };
+
+  const groupStatus = stageStatus(GROUP_MATCHES);
 
   const laterStages = [
     { key: "R16", label: "Round of 16" },
@@ -1672,10 +1735,17 @@ function Bracket() {
     { key: "Final", label: "Final" },
   ] as const;
 
+  const r32Matches = KNOCKOUT_MATCHES.filter((m) => m.stage === "R32");
+  const r32Status = stageStatus(r32Matches);
+
   return (
     <div className="space-y-6">
-      <Card className="p-4 bg-card border-border">
-        <h2 className="text-lg font-bold mb-1">Group standings (live)</h2>
+      <CollapsibleStageCard
+        title={`Group standings (${groupStatus})`}
+        status={groupStatus}
+        defaultOpen={groupStatus !== "completed"}
+        hint="Model-weighted group-finish probabilities using official FIFA 2026 tiebreakers."
+      >
         <p className="text-[11px] text-muted-foreground mb-2">
           Model-weighted group-finish probabilities from enumerating every possible result
           class of remaining group matches, using official FIFA 2026 tiebreakers
@@ -1686,35 +1756,33 @@ function Bracket() {
             <GroupTable key={g} letter={g} probs={groupProbs} standing={standings[g]} />
           ))}
         </div>
-      </Card>
+      </CollapsibleStageCard>
 
-      <Card className="p-4 bg-card border-border">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-bold">Round of 32 — confirmed bracket</h3>
-          <span className="text-[10px] text-muted-foreground italic">
-            Matchups and kick-off times from the OpenFootball API.
-          </span>
-
-        </div>
+      <CollapsibleStageCard
+        title="Round of 32 — confirmed bracket"
+        status={r32Status}
+        defaultOpen={r32Status !== "completed"}
+        hint="Matchups and kick-off times from the OpenFootball API."
+      >
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {KNOCKOUT_MATCHES.filter((m) => m.stage === "R32").map((m, i) => (
+          {r32Matches.map((m, i) => (
             <ProjectedKnockoutCard key={m.id} match={m} slots={rounds.R32[i]} label={`M${73 + i}`} />
           ))}
         </div>
-      </Card>
+      </CollapsibleStageCard>
 
       {laterStages.map(({ key, label }) => {
         const matches = KNOCKOUT_MATCHES.filter((m) => m.stage === key);
         const slotsByMatch = rounds[key];
+        const status = stageStatus(matches);
         return (
-          <Card key={key} className="p-4 bg-card border-border">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-bold">{label} — projected matchups</h3>
-              <span className="text-[10px] text-muted-foreground italic">
-                Confidence-based: % combines group progression × Elo-xG matchup probability. Updates live as scores come in.
-              </span>
-
-            </div>
+          <CollapsibleStageCard
+            key={key}
+            title={`${label} — projected matchups`}
+            status={status}
+            defaultOpen={status !== "completed"}
+            hint="Confidence-based: % combines group progression × Elo-xG matchup probability."
+          >
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {matches.map((m, i) => (
                 <ProjectedKnockoutCard
@@ -1728,7 +1796,7 @@ function Bracket() {
                 />
               ))}
             </div>
-          </Card>
+          </CollapsibleStageCard>
         );
       })}
 
@@ -1746,6 +1814,7 @@ function Bracket() {
     </div>
   );
 }
+
 
 function GroupTable({
   letter,
