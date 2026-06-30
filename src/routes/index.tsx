@@ -33,7 +33,7 @@ import { Label } from "@/components/ui/label";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Trophy, Download, Flame, Calendar, RefreshCw, Info, Zap } from "lucide-react";
+import { Trophy, Download, Flame, Calendar, RefreshCw, Info, Zap, ChevronDown, ChevronRight } from "lucide-react";
 
 
 export const Route = createFileRoute("/")({
