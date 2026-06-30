@@ -1677,30 +1677,17 @@ function Bracket() {
       <Card className="p-4 bg-card border-border">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold mb-1">Group standings complete</h2>
-            <p className="text-[11px] text-muted-foreground">
-              Final group tables using FIFA 2026 tiebreakers.
-            </p>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="shrink-0 gap-1.5"
-            aria-expanded={showGroupStandings}
-            onClick={() => setShowGroupStandings((show) => !show)}
-          >
-            <ChevronDown className={`h-4 w-4 transition-transform ${showGroupStandings ? "rotate-180" : ""}`} />
-            {showGroupStandings ? "Hide" : "Show"}
-          </Button>
+        <h2 className="text-lg font-bold mb-1">Group standings (live)</h2>
+        <p className="text-[11px] text-muted-foreground mb-2">
+          Model-weighted group-finish probabilities from enumerating every possible result
+          class of remaining group matches, using official FIFA 2026 tiebreakers
+          (pts → head-to-head → GD → GF → Elo ranking). Third-place teams still need a top-8 cross-group ranking.
+        </p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {GROUP_LETTERS.map((g) => (
+            <GroupTable key={g} letter={g} probs={groupProbs} standing={standings[g]} />
+          ))}
         </div>
-        {showGroupStandings && (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
-            {GROUP_LETTERS.map((g) => (
-              <GroupTable key={g} letter={g} standing={standings[g]} />
-            ))}
-          </div>
-        )}
       </Card>
 
       <Card className="p-4 bg-card border-border">
