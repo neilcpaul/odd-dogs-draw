@@ -1675,8 +1675,6 @@ function Bracket() {
   return (
     <div className="space-y-6">
       <Card className="p-4 bg-card border-border">
-        <div className="flex items-center justify-between gap-3">
-          <div>
         <h2 className="text-lg font-bold mb-1">Group standings (live)</h2>
         <p className="text-[11px] text-muted-foreground mb-2">
           Model-weighted group-finish probabilities from enumerating every possible result
