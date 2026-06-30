@@ -1479,9 +1479,13 @@ function knockoutActualPair(
   const home = match?.home || ko?.home;
   const away = match?.away || ko?.away;
   if (!home || !away) return null;
+  // Prefer openfootball enrichment (handles AET / penalty winner)
+  const of = getOFEnrichment(matchId);
+  if (of?.winner === "home") return { winner: home, loser: away };
+  if (of?.winner === "away") return { winner: away, loser: home };
   if (s.home > s.away) return { winner: home, loser: away };
   if (s.away > s.home) return { winner: away, loser: home };
-  return null; // tie — assume penalty shoot-out result not yet known
+  return null;
 }
 
 function projectMatchOutcome(
@@ -1541,57 +1545,46 @@ type RoundProjection = {
   Final: ProjectedSlot[][];
 };
 
+// Builds the entire bracket purely from the openfootball BRACKET_LINKS map.
+// R32 slots resolve from group standings + best-third cluster assignments;
+// later rounds resolve from prior-round winners/losers (using actual results
+// where available, otherwise Elo-based projections).
 function projectAllRounds(
   scores: Record<string, { home: number; away: number; played: boolean }>,
   knockoutSlots: Record<string, { home?: string; away?: string }>,
+  standings: Record<GroupLetter, GroupStanding>,
 ): RoundProjection {
-  const R32 = projectR32Slots();
+  const clusters = computeClusterAssignments(standings);
+  const winners: Record<string, ProjectedSlot> = {};
+  const losers: Record<string, ProjectedSlot> = {};
+  const slotsByMatchId: Record<string, [ProjectedSlot, ProjectedSlot]> = {};
 
-  const r32Winners: ProjectedSlot[] = R32.map((pair, i) =>
-    projectMatchOutcome(pair[0], pair[1], `R32-${i + 1}`, scores, knockoutSlots).winner,
-  );
+  for (const m of KNOCKOUT_MATCHES) {
+    const link = BRACKET_LINKS[m.id];
+    if (!link) continue;
+    const a = resolveSlotCode(link[0], standings, winners, losers, clusters, m.id);
+    const b = resolveSlotCode(link[1], standings, winners, losers, clusters, m.id);
+    slotsByMatchId[m.id] = [a, b];
+    const out = projectMatchOutcome(a, b, m.id, scores, knockoutSlots);
+    winners[m.id] = out.winner;
+    losers[m.id] = out.loser;
+  }
 
-  const R16: ProjectedSlot[][] = [];
-  const r16Winners: ProjectedSlot[] = [];
-  for (let i = 0; i < 8; i++) {
-    const a = r32Winners[i * 2];
-    const b = r32Winners[i * 2 + 1];
-    R16.push([a, b]);
-    r16Winners.push(
-      projectMatchOutcome(a, b, `R16-${i + 1}`, scores, knockoutSlots).winner,
+  const pickStage = (stage: Match["stage"]): ProjectedSlot[][] =>
+    KNOCKOUT_MATCHES.filter((m) => m.stage === stage).map(
+      (m) => slotsByMatchId[m.id] ?? [
+        { team: null, description: "TBD" },
+        { team: null, description: "TBD" },
+      ],
     );
-  }
-
-  const QF: ProjectedSlot[][] = [];
-  const qfWinners: ProjectedSlot[] = [];
-  for (let i = 0; i < 4; i++) {
-    const a = r16Winners[i * 2];
-    const b = r16Winners[i * 2 + 1];
-    QF.push([a, b]);
-    qfWinners.push(
-      projectMatchOutcome(a, b, `QF-${i + 1}`, scores, knockoutSlots).winner,
-    );
-  }
-
-  const SF: ProjectedSlot[][] = [];
-  const sfWinners: ProjectedSlot[] = [];
-  const sfLosers: ProjectedSlot[] = [];
-  for (let i = 0; i < 2; i++) {
-    const a = qfWinners[i * 2];
-    const b = qfWinners[i * 2 + 1];
-    SF.push([a, b]);
-    const out = projectMatchOutcome(a, b, `SF-${i + 1}`, scores, knockoutSlots);
-    sfWinners.push(out.winner);
-    sfLosers.push(out.loser);
-  }
 
   return {
-    R32,
-    R16,
-    QF,
-    SF,
-    "3rd": [[sfLosers[0], sfLosers[1]]],
-    Final: [[sfWinners[0], sfWinners[1]]],
+    R32: pickStage("R32"),
+    R16: pickStage("R16"),
+    QF: pickStage("QF"),
+    SF: pickStage("SF"),
+    "3rd": pickStage("3rd"),
+    Final: pickStage("Final"),
   };
 }
 
