@@ -1749,45 +1749,50 @@ function Bracket() {
 
 function GroupTable({
   letter,
+  probs,
   standing,
 }: {
   letter: GroupLetter;
+  probs: GroupProbs;
   standing: GroupStanding;
 }) {
+  const formatPlacementChance = (chance: number) => {
+    if (chance <= 0.0001) return "";
+    if (chance >= 0.9995) return "✓";
+    const pct = chance * 100;
+    if (pct < 0.1) return "<0.1%";
+    if (pct < 10) return `${pct.toFixed(1)}%`;
+    return `${pct.toFixed(0)}%`;
+  };
+
   return (
     <div className="rounded-md bg-secondary/30 p-2">
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <div className="text-xs font-black text-primary">Group {letter}</div>
-        <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-black text-emerald-300">
-          COMPLETED
-        </span>
-      </div>
+      <div className="text-xs font-black text-primary mb-1">Group {letter}</div>
       <table className="w-full table-fixed text-[10px]">
         <colgroup>
-          <col className="w-[11%]" />
-          <col className="w-[45%]" />
-          <col className="w-[11%]" />
-          <col className="w-[11%]" />
-          <col className="w-[11%]" />
-          <col className="w-[11%]" />
+          <col className="w-[42%]" />
+          <col className="w-[11.6%]" />
+          <col className="w-[11.6%]" />
+          <col className="w-[11.6%]" />
+          <col className="w-[11.6%]" />
+          <col className="w-[11.6%]" />
         </colgroup>
         <thead>
           <tr className="text-muted-foreground">
-            <th className="pb-1 pr-1 text-left font-semibold">#</th>
             <th className="pb-1 pr-1 text-left font-semibold">Team</th>
-            <th className="pb-1 text-right font-semibold">P</th>
-            <th className="pb-1 text-right font-semibold">Pts</th>
-            <th className="pb-1 text-right font-semibold">GD</th>
-            <th className="pb-1 text-right font-semibold">GF</th>
+            <th className="pb-1 text-right font-semibold" title="Chance of finishing 1st">1st</th>
+            <th className="pb-1 text-right font-semibold" title="Chance of finishing 2nd">2nd</th>
+            <th className="pb-1 text-right font-semibold" title="Chance of finishing 3rd and qualifying as a best third-place team">3T</th>
+            <th className="pb-1 text-right font-semibold" title="Chance of finishing 3rd and going out">3O</th>
+            <th className="pb-1 text-right font-semibold" title="Chance of finishing 4th">4th</th>
           </tr>
         </thead>
         <tbody>
-          {standing.order.map((t, i) => {
-            const s = standing.stats[t];
-            const gd = s.gf - s.ga;
+          {standing.order.map((t) => {
+            const p = probs[t] ?? emptyPlacementProbs();
+            const title = `1st ${(p.first*100).toFixed(1)}% · 2nd ${(p.second*100).toFixed(1)}% · 3rd & thru ${(p.thirdThrough*100).toFixed(1)}% · 3rd & out ${(p.thirdOut*100).toFixed(1)}% · 4th ${(p.fourth*100).toFixed(1)}%`;
             return (
-              <tr key={t} className="border-t border-border/30 first:border-t-0">
-                <td className="py-1 pr-1 font-semibold tabular-nums text-muted-foreground">{i + 1}</td>
+              <tr key={t} title={title} className="border-t border-border/30 first:border-t-0">
                 <td className="py-1 pr-1">
                   <span className="flex min-w-0 items-center gap-1">
                     <span>{TEAMS[t].flag}</span>
@@ -1795,10 +1800,11 @@ function GroupTable({
                     <PlayerTag team={t} />
                   </span>
                 </td>
-                <td className="py-1 text-right font-semibold tabular-nums">{s.p}</td>
-                <td className="py-1 text-right font-semibold tabular-nums">{s.pts}</td>
-                <td className="py-1 text-right font-semibold tabular-nums">{gd > 0 ? `+${gd}` : gd}</td>
-                <td className="py-1 text-right font-semibold tabular-nums">{s.gf}</td>
+                <td className="py-1 text-right font-semibold tabular-nums text-emerald-400">{formatPlacementChance(p.first)}</td>
+                <td className="py-1 text-right font-semibold tabular-nums text-emerald-400">{formatPlacementChance(p.second)}</td>
+                <td className="py-1 text-right font-semibold tabular-nums text-emerald-400">{formatPlacementChance(p.thirdThrough)}</td>
+                <td className="py-1 text-right font-semibold tabular-nums text-amber-400">{formatPlacementChance(p.thirdOut)}</td>
+                <td className="py-1 text-right font-semibold tabular-nums text-destructive">{formatPlacementChance(p.fourth)}</td>
               </tr>
             );
           })}
