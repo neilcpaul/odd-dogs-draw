@@ -322,10 +322,17 @@ export function computeAllTotals(): PlayerTotals[] {
 
 export function isTeamEliminated(team: string): boolean {
   const lostKnockout = KNOCKOUT_MATCHES.some((m) => {
-    const score = effectiveScore(m.id);
-    if (!score || score.home === score.away) return false;
     const e = effectiveTeams(m);
     if (e.home !== team && e.away !== team) return false;
+    // Prefer openfootball enrichment so AET / penalty-shootout losers are
+    // recognised even when the FT score on file is a draw.
+    const enrich = getOFEnrichment(m.id);
+    if (enrich?.isComplete && enrich.winner) {
+      const teamSide = e.home === team ? "home" : "away";
+      return enrich.winner !== teamSide;
+    }
+    const score = effectiveScore(m.id);
+    if (!score || score.home === score.away) return false;
     return e.home === team ? score.home < score.away : score.away < score.home;
   });
   if (lostKnockout) return true;
