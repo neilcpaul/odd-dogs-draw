@@ -1652,10 +1652,12 @@ function Bracket() {
   const state = useAppState();
   const [showGroupStandings, setShowGroupStandings] = useState(false);
   // recompute on score / knockout-slot changes
-  const { standings, rounds } = useMemo(() => {
+  const { groupProbs, standings, rounds } = useMemo(() => {
     void state;
     const standings = bestEstimateStandings();
+    const groupProbs = computeAllGroupProbs();
     return {
+      groupProbs,
       standings,
       rounds: projectAllRounds(state.scores, state.knockoutSlots, standings),
     };
