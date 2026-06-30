@@ -1627,7 +1627,7 @@ function Bracket() {
     const standings = bestEstimateStandings();
     return {
       standings,
-      rounds: projectAllRounds(state.scores, state.knockoutSlots),
+      rounds: projectAllRounds(state.scores, state.knockoutSlots, standings),
     };
   }, [state.scores, state.knockoutSlots]);
 
