@@ -6,6 +6,12 @@
 import { useSyncExternalStore } from "react";
 import { applyApiSchedule, GROUP_MATCHES, PLAYERS, STATIC_MATCH_API_DATA, type MatchData } from "./wc-data";
 import { bulkSetScores, setAllWildcards, type WildcardUse } from "./wc-store";
+import {
+  parseOpenfootballScore,
+  parseOpenfootballGoals,
+  setOFEnrichments,
+  type OFEnrichment,
+} from "./wc-openfootball";
 
 const OPENFOOTBALL_URL =
   "https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json";
