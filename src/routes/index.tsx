@@ -814,7 +814,13 @@ function PlayersTab({ focusPlayer, onConsumeFocus }: { focusPlayer: string | nul
   );
 }
 
-function MatchRow({ matchId, label, points, hasWC, live }: { matchId: string; label: string; points: number; hasWC: boolean; live: boolean }) {
+function shortStageLabel(match: Match): string {
+  if (match.stage === "group") return "G";
+  if (match.stage === "3rd") return "3rd";
+  return match.stage; // R32, R16, QF, SF, Final
+}
+
+function MatchRow({ matchId, stage, label, points, hasWC, live }: { matchId: string; stage: string; label: string; points: number; hasWC: boolean; live: boolean }) {
   const { open } = useMatchDetail();
   return (
     <button
@@ -826,6 +832,7 @@ function MatchRow({ matchId, label, points, hasWC, live }: { matchId: string; la
         {live && (
           <span className="inline-flex items-center gap-0.5 rounded bg-red-500 text-white px-1 py-0 text-[9px] font-black animate-pulse">●LIVE</span>
         )}
+        <span className="inline-flex items-center justify-center rounded bg-primary/15 text-primary px-1 py-0 text-[9px] font-black tracking-wide">{stage}</span>
         {label}
       </span>
       <span className={`font-bold ${live ? "italic text-amber-400" : "text-primary"}`}>
@@ -834,6 +841,7 @@ function MatchRow({ matchId, label, points, hasWC, live }: { matchId: string; la
     </button>
   );
 }
+
 
 type PlayerNextMatch = {
   match: Match;
