@@ -74,9 +74,25 @@ function MatchDetailModal({ matchId, onClose }: { matchId: string | null; onClos
   const timeText = dateObj.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   const locationText = [match.venue, match.city].filter(Boolean).join(", ");
 
-  const homeScorers = live?.homeScorers ?? [];
-  const awayScorers = live?.awayScorers ?? [];
-  const hasScorers = homeScorers.length > 0 || awayScorers.length > 0;
+  const of = useOFEnrichment(matchId ?? "");
+
+  // Scorer source priority:
+  // 1) worldcup26.ir (already formatted "Player MM'")
+  // 2) openfootball goals1/goals2 — formatted as "Name MM'", with "(AET)" suffix when minute > 90
+  type ScorerLine = { text: string; aet: boolean };
+  const liveHome = (live?.homeScorers ?? []).map((s): ScorerLine => ({ text: s, aet: false }));
+  const liveAway = (live?.awayScorers ?? []).map((s): ScorerLine => ({ text: s, aet: false }));
+  const ofHome = (of?.homeGoals ?? []).map((g): ScorerLine => ({
+    text: `${g.name} ${g.minute}'`,
+    aet: isExtraTimeMinute(g.minute),
+  }));
+  const ofAway = (of?.awayGoals ?? []).map((g): ScorerLine => ({
+    text: `${g.name} ${g.minute}'`,
+    aet: isExtraTimeMinute(g.minute),
+  }));
+  const homeScorerLines: ScorerLine[] = liveHome.length > 0 ? liveHome : ofHome;
+  const awayScorerLines: ScorerLine[] = liveAway.length > 0 ? liveAway : ofAway;
+  const hasScorers = homeScorerLines.length > 0 || awayScorerLines.length > 0;
 
   // Sweepstakes players in this match
   const points = isFinished ? pointsForMatch(match) : isLive ? pointsForMatchLive(match) : [];
