@@ -201,12 +201,18 @@ function computeMatchPointsFromScore(
   if (!home || !away) return out;
   const isKnockout = m.stage !== "group";
   // For knockout matches, use openfootball enrichment to determine the
-  // advancing side (handles ET / penalty winners that look like a tie on FT).
+  // advancing side (handles ET / penalty winners that look like a tie on FT)
+  // AND to use the AET-inclusive (penalty-shootout-excluded) final score for
+  // goal-point calculation. This keeps points consistent with what the
+  // dashboard / match-detail UI displays as the final score.
   const enrich = isKnockout ? getOFEnrichment(m.id) : undefined;
+  const effHome = isKnockout && enrich?.isComplete ? enrich.finalScoreHome : score.home;
+  const effAway = isKnockout && enrich?.isComplete ? enrich.finalScoreAway : score.away;
   const teams: Array<{ name: string; goals: number; opp: number; side: "home" | "away" }> = [
-    { name: home, goals: score.home, opp: score.away, side: "home" },
-    { name: away, goals: score.away, opp: score.home, side: "away" },
+    { name: home, goals: effHome, opp: effAway, side: "home" },
+    { name: away, goals: effAway, opp: effHome, side: "away" },
   ];
+
   for (const t of teams) {
     const teamData = TEAMS[t.name];
     if (!teamData) continue;

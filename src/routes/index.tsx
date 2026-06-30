@@ -492,6 +492,21 @@ function MiniResult({ match }: { match: Match }) {
   const homeCls = winnerSide === "home" ? "font-extrabold text-foreground drop-shadow-[0_0_4px_rgba(16,185,129,0.4)]" : "";
   const awayCls = winnerSide === "away" ? "font-extrabold text-foreground drop-shadow-[0_0_4px_rgba(16,185,129,0.4)]" : "";
 
+  const scoreBlock = (
+    <div className="flex flex-col items-center justify-center text-center leading-tight">
+      <span className="font-black text-primary tabular-nums text-base">{ds?.home ?? 0}–{ds?.away ?? 0}</span>
+      {aet && <span className="text-[9px] font-bold text-muted-foreground">(AET)</span>}
+      {pens && (
+        <div className="text-[9px] text-muted-foreground font-semibold">
+          Pens:{" "}
+          <span className={pens.home > pens.away ? "text-emerald-300 font-extrabold" : ""}>{pens.home}</span>
+          <span className="mx-0.5">–</span>
+          <span className={pens.away > pens.home ? "text-emerald-300 font-extrabold" : ""}>{pens.away}</span>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div
       role="button"
@@ -500,27 +515,37 @@ function MiniResult({ match }: { match: Match }) {
       onKeyDown={(ev) => { if (ev.key === "Enter") open(match.id); }}
       className="rounded-md bg-secondary/40 px-3 py-2 text-sm cursor-pointer hover:bg-secondary/70 transition"
     >
-      <div className="text-[10px] text-muted-foreground mb-0.5 flex items-center justify-between">
+      <div className="text-[10px] text-muted-foreground mb-1 flex items-center justify-between">
         <LocalTime iso={match.date} />
         {isDraw && <span className="text-[9px] font-bold tracking-wide text-muted-foreground">DRAW</span>}
       </div>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 gap-y-0.5">
+
+      {/* Mobile: vertical stack, score centered between teams */}
+      <div className="flex flex-col items-center gap-1 sm:hidden">
+        <span className={`inline-flex items-center max-w-full ${homeCls}`}>
+          <TeamChip team={e.home} />
+          {winnerSide === "home" && winMark}
+        </span>
+        {scoreBlock}
+        <span className={`inline-flex items-center max-w-full ${awayCls}`}>
+          <TeamChip team={e.away} />
+          {winnerSide === "away" && winMark}
+        </span>
+        {hasScorers && (
+          <div className="w-full grid grid-cols-2 gap-2 mt-1">
+            <div className="text-[10px] text-muted-foreground truncate">⚽ {homeScorers.join(" · ")}</div>
+            <div className="text-[10px] text-muted-foreground truncate text-right">⚽ {awayScorers.join(" · ")}</div>
+          </div>
+        )}
+      </div>
+
+      {/* Desktop / tablet: home – score – away */}
+      <div className="hidden sm:grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 gap-y-0.5">
         <span className={`inline-flex items-center min-w-0 ${homeCls}`}>
           <TeamChip team={e.home} />
           {winnerSide === "home" && winMark}
         </span>
-        <span className="row-span-2 self-center text-center">
-          <span className="font-black text-primary tabular-nums">{ds?.home ?? 0}–{ds?.away ?? 0}</span>
-          {aet && <span className="ml-1 text-[9px] font-bold text-muted-foreground">(AET)</span>}
-          {pens && (
-            <div className="text-[9px] text-muted-foreground font-semibold mt-0.5">
-              Pens:{" "}
-              <span className={pens.home > pens.away ? "text-emerald-300 font-extrabold" : ""}>{pens.home}</span>
-              <span className="mx-0.5">–</span>
-              <span className={pens.away > pens.home ? "text-emerald-300 font-extrabold" : ""}>{pens.away}</span>
-            </div>
-          )}
-        </span>
+        <span className="row-span-2 self-center">{scoreBlock}</span>
         <div className="justify-self-end">
           <span className={`inline-flex items-center ${awayCls}`}>
             {winnerSide === "away" && winMark}
@@ -537,6 +562,7 @@ function MiniResult({ match }: { match: Match }) {
     </div>
   );
 }
+
 
 /* ---------------- FIXTURES ---------------- */
 
@@ -791,6 +817,7 @@ function PlayersTab({ focusPlayer, onConsumeFocus }: { focusPlayer: string | nul
                             <MatchRow
                               key={`${match.id}-${live ? "L" : "F"}`}
                               matchId={match.id}
+                              stage={shortStageLabel(match)}
                               label={`vs ${TEAMS[opp]?.flag ?? ""} ${opp} · ${my}–${th}`}
                               points={points.total}
                               hasWC={points.wildcardBonus > 0}
@@ -798,6 +825,7 @@ function PlayersTab({ focusPlayer, onConsumeFocus }: { focusPlayer: string | nul
                             />
                           );
                         })}
+
                         {nextMatch && <NextMatchRow next={nextMatch} />}
                       </div>
                     )}
@@ -812,7 +840,13 @@ function PlayersTab({ focusPlayer, onConsumeFocus }: { focusPlayer: string | nul
   );
 }
 
-function MatchRow({ matchId, label, points, hasWC, live }: { matchId: string; label: string; points: number; hasWC: boolean; live: boolean }) {
+function shortStageLabel(match: Match): string {
+  if (match.stage === "group") return "G";
+  if (match.stage === "3rd") return "3rd";
+  return match.stage; // R32, R16, QF, SF, Final
+}
+
+function MatchRow({ matchId, stage, label, points, hasWC, live }: { matchId: string; stage: string; label: string; points: number; hasWC: boolean; live: boolean }) {
   const { open } = useMatchDetail();
   return (
     <button
@@ -824,6 +858,7 @@ function MatchRow({ matchId, label, points, hasWC, live }: { matchId: string; la
         {live && (
           <span className="inline-flex items-center gap-0.5 rounded bg-red-500 text-white px-1 py-0 text-[9px] font-black animate-pulse">●LIVE</span>
         )}
+        <span className="inline-flex items-center justify-center rounded bg-primary/15 text-primary px-1 py-0 text-[9px] font-black tracking-wide">{stage}</span>
         {label}
       </span>
       <span className={`font-bold ${live ? "italic text-amber-400" : "text-primary"}`}>
@@ -832,6 +867,7 @@ function MatchRow({ matchId, label, points, hasWC, live }: { matchId: string; la
     </button>
   );
 }
+
 
 type PlayerNextMatch = {
   match: Match;
