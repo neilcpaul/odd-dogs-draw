@@ -45,6 +45,8 @@ function MatchDetailModal({ matchId, onClose }: { matchId: string | null; onClos
     return () => clearInterval(t);
   }, [live]);
 
+  const of = useOFEnrichment(matchId ?? "");
+
   const match = matchId ? ALL_MATCHES.find((m) => m.id === matchId) : undefined;
   if (!match) {
     return <Dialog open={false} onOpenChange={onClose}><DialogContent /></Dialog>;
