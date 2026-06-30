@@ -791,6 +791,7 @@ function PlayersTab({ focusPlayer, onConsumeFocus }: { focusPlayer: string | nul
                             <MatchRow
                               key={`${match.id}-${live ? "L" : "F"}`}
                               matchId={match.id}
+                              stage={shortStageLabel(match)}
                               label={`vs ${TEAMS[opp]?.flag ?? ""} ${opp} · ${my}–${th}`}
                               points={points.total}
                               hasWC={points.wildcardBonus > 0}
@@ -798,6 +799,7 @@ function PlayersTab({ focusPlayer, onConsumeFocus }: { focusPlayer: string | nul
                             />
                           );
                         })}
+
                         {nextMatch && <NextMatchRow next={nextMatch} />}
                       </div>
                     )}
