@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ALL_MATCHES, GROUP_MATCHES, PLAYERS, TEAMS, teamOwner, type Match, type Pot } from "@/lib/wc-data";
 import { effectiveTeams, pointsForMatch, pointsForMatchLive, useAppState, getState } from "@/lib/wc-store";
 import { useLiveMatch } from "@/lib/wc-live";
+import { useOFEnrichment, isExtraTimeMinute } from "@/lib/wc-openfootball";
 
 interface MatchDetailContextValue {
   open: (matchId: string) => void;
