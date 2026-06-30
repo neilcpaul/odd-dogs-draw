@@ -18,6 +18,7 @@ import {
   setTeamContext, setVenueContext, resetAllContext,
 } from "@/lib/wc-context";
 import { MatchDetailProvider, useMatchDetail } from "@/components/MatchDetailModal";
+import { useOFEnrichment } from "@/lib/wc-openfootball";
 import { PredictionBoard } from "@/components/PredictionBoard";
 import { BettingPanel } from "@/components/BettingPanel";
 import { Button } from "@/components/ui/button";
