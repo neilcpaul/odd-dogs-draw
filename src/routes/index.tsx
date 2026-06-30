@@ -7,7 +7,7 @@ import {
   PLAYERS, POT_LABEL_CLASS, TEAMS, teamOwner, type GroupLetter, type Match, type Pot,
 } from "@/lib/wc-data";
 import {
-  computeAllTotals, displayScore, effectiveTeams, getState, isMatchLive,
+  computeAllTotals, displayScore, effectiveScore, effectiveTeams, getState, isMatchLive,
   isTeamEliminated, loadFromStorage, nextUpcoming, recentResults, useAppState,
 } from "@/lib/wc-store";
 import { knockoutAdvanceProbability, priceMatch, teamElo } from "@/lib/wc-probability";
