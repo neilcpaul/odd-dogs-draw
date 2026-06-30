@@ -1872,7 +1872,7 @@ function formatConfidence(c: number): string {
   return `${pct.toFixed(0)}%`;
 }
 
-function ProjectedSlotRow({ slot }: { slot: ProjectedSlot }) {
+function ProjectedSlotRow({ slot, isWinner = false }: { slot: ProjectedSlot; isWinner?: boolean }) {
   if (slot.team === null) {
     return (
       <div className="flex items-center gap-1.5">
@@ -1891,12 +1891,15 @@ function ProjectedSlotRow({ slot }: { slot: ProjectedSlot }) {
   const conf = slot.confidence;
   const showConf = slot.projected && conf !== undefined;
   return (
-    <div className="flex items-center gap-1.5">
+    <div className={`flex items-center gap-1.5 ${isWinner ? "font-extrabold text-foreground drop-shadow-[0_0_4px_rgba(16,185,129,0.4)]" : ""}`}>
       <span className="w-1.5 h-5 rounded" style={{ background: color }} />
       {roleLabel && (
         <span className="text-[9px] text-muted-foreground w-6 tabular-nums">{roleLabel}</span>
       )}
       <BracketTeam team={slot.team} projected={slot.projected} />
+      {isWinner && (
+        <span className="inline-flex items-center justify-center rounded bg-emerald-500/20 text-emerald-300 px-1 text-[9px] font-black leading-none">W</span>
+      )}
       {showConf && (
         <span
           className="ml-auto text-[9px] tabular-nums text-amber-400/90 font-semibold"
