@@ -4,6 +4,7 @@ import {
   teamOwner, type Match,
 } from "./wc-data";
 import { getLiveMatch } from "./wc-live";
+import { getOFEnrichment } from "./wc-openfootball";
 
 export interface MatchScore {
   home: number;
