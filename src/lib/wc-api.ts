@@ -6,6 +6,12 @@
 import { useSyncExternalStore } from "react";
 import { applyApiSchedule, GROUP_MATCHES, PLAYERS, STATIC_MATCH_API_DATA, type MatchData } from "./wc-data";
 import { bulkSetScores, setAllWildcards, type WildcardUse } from "./wc-store";
+import {
+  parseOpenfootballScore,
+  parseOpenfootballGoals,
+  setOFEnrichments,
+  type OFEnrichment,
+} from "./wc-openfootball";
 
 const OPENFOOTBALL_URL =
   "https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json";
@@ -171,7 +177,7 @@ function findMatchId(m: MatchData): string | undefined {
 function openFootballToMatchData(matches: OpenFootballMatch[]): MatchData[] {
   return matches.map((m, i) => {
     const dt = parseOpenFootballDateTime(m.date, m.time);
-    const finished = Array.isArray(m.score?.ft);
+    const parsed = parseOpenfootballScore(m);
     const ground = m.ground ?? "";
     const home = canonName(m.team1);
     const away = canonName(m.team2);
@@ -190,18 +196,22 @@ function openFootballToMatchData(matches: OpenFootballMatch[]): MatchData[] {
       venue_name: ground,
       venue_city: "",
       slug: "",
-      score_home: finished ? m.score!.ft![0] : undefined,
-      score_away: finished ? m.score!.ft![1] : undefined,
-      status: finished ? "FINISHED" : "SCHEDULED",
+      // Store FT+ET combined goal count (excludes penalty-shootout goals).
+      score_home: parsed.isComplete ? parsed.finalScoreHome : undefined,
+      score_away: parsed.isComplete ? parsed.finalScoreAway : undefined,
+      status: parsed.isComplete ? "FINISHED" : "SCHEDULED",
     } as MatchData;
   });
 }
 
-async function fetchOpenFootball(): Promise<MatchData[]> {
+interface OpenFootballRawAndData { raw: OpenFootballMatch; data: MatchData; }
+
+async function fetchOpenFootball(): Promise<{ matches: MatchData[]; raw: OpenFootballMatch[] }> {
   const res = await fetch(OPENFOOTBALL_URL, { cache: "no-store" });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = (await res.json()) as { matches: OpenFootballMatch[] };
-  return openFootballToMatchData(json.matches ?? []);
+  const raw = json.matches ?? [];
+  return { matches: openFootballToMatchData(raw), raw };
 }
 
 async function fetchJsonStatic<T>(path: string): Promise<T> {
@@ -211,9 +221,12 @@ async function fetchJsonStatic<T>(path: string): Promise<T> {
 
 export async function fetchAndApply(): Promise<void> {
   let matches: MatchData[];
+  let rawMatches: OpenFootballMatch[] = [];
   let isStaticData = false;
   try {
-    matches = await fetchOpenFootball();
+    const r = await fetchOpenFootball();
+    matches = r.matches;
+    rawMatches = r.raw;
   } catch (e) {
     console.warn("openfootball fetch failed, using static fallback", e);
     matches = STATIC_MATCH_API_DATA.data;
@@ -222,12 +235,32 @@ export async function fetchAndApply(): Promise<void> {
   if (!isStaticData) applyApiSchedule(matches);
 
   const updates: Array<{ id: string; home: number; away: number; played: boolean }> = [];
+  const enrichments: OFEnrichment[] = [];
   const live = new Set<string>();
   const now = Date.now();
 
-  for (const m of matches) {
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i];
     const id = findMatchId(m);
     if (!id) continue;
+
+    // Resilient per-match enrichment — a single bad entry must not break others.
+    if (!isStaticData) {
+      try {
+        const raw = rawMatches[i];
+        const parsed = parseOpenfootballScore(raw);
+        if (parsed.isComplete || parsed.fullTimeHome !== undefined) {
+          enrichments.push({
+            matchId: id,
+            ...parsed,
+            homeGoals: parseOpenfootballGoals((raw as { goals1?: unknown }).goals1),
+            awayGoals: parseOpenfootballGoals((raw as { goals2?: unknown }).goals2),
+          });
+        }
+      } catch (e) {
+        console.warn("openfootball per-match enrichment failed", e);
+      }
+    }
 
     const isFinished = m.status === "FINISHED"
       && typeof m.score_home === "number"
@@ -241,9 +274,12 @@ export async function fetchAndApply(): Promise<void> {
   }
 
   bulkSetScores(updates);
+  setOFEnrichments(enrichments);
   meta = { ...meta, offline: isStaticData, loaded: true, liveMatchIds: live, lastFetch: Date.now() };
   emit();
 }
+
+void ({} as OpenFootballRawAndData);
 
 
 export async function fetchTv(): Promise<void> {

@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ALL_MATCHES, GROUP_MATCHES, PLAYERS, TEAMS, teamOwner, type Match, type Pot } from "@/lib/wc-data";
 import { effectiveTeams, pointsForMatch, pointsForMatchLive, useAppState, getState } from "@/lib/wc-store";
 import { useLiveMatch } from "@/lib/wc-live";
+import { useOFEnrichment, isExtraTimeMinute } from "@/lib/wc-openfootball";
 
 interface MatchDetailContextValue {
   open: (matchId: string) => void;
@@ -73,9 +74,25 @@ function MatchDetailModal({ matchId, onClose }: { matchId: string | null; onClos
   const timeText = dateObj.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   const locationText = [match.venue, match.city].filter(Boolean).join(", ");
 
-  const homeScorers = live?.homeScorers ?? [];
-  const awayScorers = live?.awayScorers ?? [];
-  const hasScorers = homeScorers.length > 0 || awayScorers.length > 0;
+  const of = useOFEnrichment(matchId ?? "");
+
+  // Scorer source priority:
+  // 1) worldcup26.ir (already formatted "Player MM'")
+  // 2) openfootball goals1/goals2 — formatted as "Name MM'", with "(AET)" suffix when minute > 90
+  type ScorerLine = { text: string; aet: boolean };
+  const liveHome = (live?.homeScorers ?? []).map((s): ScorerLine => ({ text: s, aet: false }));
+  const liveAway = (live?.awayScorers ?? []).map((s): ScorerLine => ({ text: s, aet: false }));
+  const ofHome = (of?.homeGoals ?? []).map((g): ScorerLine => ({
+    text: `${g.name} ${g.minute}'`,
+    aet: isExtraTimeMinute(g.minute),
+  }));
+  const ofAway = (of?.awayGoals ?? []).map((g): ScorerLine => ({
+    text: `${g.name} ${g.minute}'`,
+    aet: isExtraTimeMinute(g.minute),
+  }));
+  const homeScorerLines: ScorerLine[] = liveHome.length > 0 ? liveHome : ofHome;
+  const awayScorerLines: ScorerLine[] = liveAway.length > 0 ? liveAway : ofAway;
+  const hasScorers = homeScorerLines.length > 0 || awayScorerLines.length > 0;
 
   // Sweepstakes players in this match
   const points = isFinished ? pointsForMatch(match) : isLive ? pointsForMatchLive(match) : [];
@@ -123,15 +140,48 @@ function MatchDetailModal({ matchId, onClose }: { matchId: string | null; onClos
 
           {/* Score */}
           {score && (
-            <div className="flex items-center justify-center gap-4 py-2">
-              <div className="text-4xl font-black tabular-nums">{score.home}</div>
-              <div className="text-2xl text-muted-foreground">–</div>
-              <div className="text-4xl font-black tabular-nums">{score.away}</div>
-              {isLive && live?.timeElapsed && live.timeElapsed !== "finished" && (
-                <span className="ml-2 text-sm text-muted-foreground">
-                  {live.timeElapsed === "HT" ? "Half Time" : `${live.timeElapsed}'`}
-                </span>
+            <div className="flex flex-col items-center gap-1 py-2">
+              <div className="flex items-center justify-center gap-4">
+                <div className="text-4xl font-black tabular-nums">{score.home}</div>
+                <div className="text-2xl text-muted-foreground">–</div>
+                <div className="text-4xl font-black tabular-nums">{score.away}</div>
+                {isLive && live?.timeElapsed && live.timeElapsed !== "finished" && (
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    {live.timeElapsed === "HT" ? "Half Time" : `${live.timeElapsed}'`}
+                  </span>
+                )}
+              </div>
+              {/* AET annotation on the headline */}
+              {of?.wentToExtraTime && (
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">(aet)</div>
               )}
+              {/* Penalty shootout breakdown */}
+              {of?.wentToPenalties && of.penaltiesHome !== undefined && of.penaltiesAway !== undefined && (
+                <div className="text-xs font-bold text-amber-400">
+                  Pens: {of.penaltiesHome} – {of.penaltiesAway}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Milestone scores (HT / 90' / AET / Pens) */}
+          {of && (of.halfTimeHome !== undefined || of.isComplete || of.wentToExtraTime || of.wentToPenalties) && (
+            <div className="border-t border-border pt-3">
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Milestones</div>
+              <div className="space-y-1 text-xs tabular-nums">
+                {of.halfTimeHome !== undefined && of.halfTimeAway !== undefined && (
+                  <div className="flex justify-between"><span className="text-muted-foreground w-12">HT</span><span className="font-bold">{of.halfTimeHome} – {of.halfTimeAway}</span></div>
+                )}
+                {of.isComplete && of.fullTimeHome !== undefined && of.fullTimeAway !== undefined && (
+                  <div className="flex justify-between"><span className="text-muted-foreground w-12">90'</span><span className="font-bold">{of.fullTimeHome} – {of.fullTimeAway}</span></div>
+                )}
+                {of.wentToExtraTime && of.extraTimeHome !== undefined && of.extraTimeAway !== undefined && (
+                  <div className="flex justify-between"><span className="text-muted-foreground w-12">AET</span><span className="font-bold">{of.extraTimeHome} – {of.extraTimeAway}</span></div>
+                )}
+                {of.wentToPenalties && of.penaltiesHome !== undefined && of.penaltiesAway !== undefined && (
+                  <div className="flex justify-between"><span className="text-muted-foreground w-12">Pens</span><span className="font-bold text-amber-400">{of.penaltiesHome} – {of.penaltiesAway}</span></div>
+                )}
+              </div>
             </div>
           )}
 
@@ -140,26 +190,41 @@ function MatchDetailModal({ matchId, onClose }: { matchId: string | null; onClos
             <div className="grid grid-cols-2 gap-3 text-xs border-t border-border pt-3">
               <div>
                 <div className="font-bold mb-1">{homeFlag} Goals</div>
-                {homeScorers.length === 0 ? (
+                {homeScorerLines.length === 0 ? (
                   <div className="text-muted-foreground">—</div>
                 ) : (
                   <ul className="space-y-0.5">
-                    {homeScorers.map((s, i) => <li key={i}>⚽ {s}</li>)}
+                    {homeScorerLines.map((s, i) => (
+                      <li key={i}>⚽ {s.text}{s.aet && <span className="ml-1 text-[9px] uppercase text-amber-400/80">AET</span>}</li>
+                    ))}
                   </ul>
                 )}
               </div>
               <div>
                 <div className="font-bold mb-1">{awayFlag} Goals</div>
-                {awayScorers.length === 0 ? (
+                {awayScorerLines.length === 0 ? (
                   <div className="text-muted-foreground">—</div>
                 ) : (
                   <ul className="space-y-0.5">
-                    {awayScorers.map((s, i) => <li key={i}>⚽ {s}</li>)}
+                    {awayScorerLines.map((s, i) => (
+                      <li key={i}>⚽ {s.text}{s.aet && <span className="ml-1 text-[9px] uppercase text-amber-400/80">AET</span>}</li>
+                    ))}
                   </ul>
                 )}
               </div>
             </div>
           )}
+
+          {/* Penalty shootout section (no individual takers; data unavailable) */}
+          {of?.wentToPenalties && of.penaltiesHome !== undefined && of.penaltiesAway !== undefined && (
+            <div className="border-t border-border pt-3">
+              <div className="text-xs font-bold mb-1">Penalty Shootout</div>
+              <div className="text-sm tabular-nums">
+                {e.home} {of.penaltiesHome} – {of.penaltiesAway} {e.away}
+              </div>
+            </div>
+          )}
+
 
           {/* Match info */}
           <div className="space-y-1 text-sm border-t border-border pt-3">

@@ -4,6 +4,7 @@ import {
   teamOwner, type Match,
 } from "./wc-data";
 import { getLiveMatch } from "./wc-live";
+import { getOFEnrichment } from "./wc-openfootball";
 
 export interface MatchScore {
   home: number;
@@ -198,9 +199,13 @@ function computeMatchPointsFromScore(
   const out: MatchPoints[] = [];
   const { home, away } = effectiveTeams(m);
   if (!home || !away) return out;
-  const teams: Array<{ name: string; goals: number; opp: number }> = [
-    { name: home, goals: score.home, opp: score.away },
-    { name: away, goals: score.away, opp: score.home },
+  const isKnockout = m.stage !== "group";
+  // For knockout matches, use openfootball enrichment to determine the
+  // advancing side (handles ET / penalty winners that look like a tie on FT).
+  const enrich = isKnockout ? getOFEnrichment(m.id) : undefined;
+  const teams: Array<{ name: string; goals: number; opp: number; side: "home" | "away" }> = [
+    { name: home, goals: score.home, opp: score.away, side: "home" },
+    { name: away, goals: score.away, opp: score.home, side: "away" },
   ];
   for (const t of teams) {
     const teamData = TEAMS[t.name];
@@ -208,8 +213,17 @@ function computeMatchPointsFromScore(
     const player = teamOwner(t.name);
     const pot = teamData.pot;
     let winPts = 0;
-    if (t.goals > t.opp) winPts = pot;
-    else if (t.goals === t.opp) winPts = pot / 2;
+    if (isKnockout) {
+      // Knockout: no draws. Win points go ONLY to the advancing side.
+      // If enrichment present, trust enrich.winner; else fall back to score sign.
+      const winnerSide = enrich?.winner ?? (t.goals > t.opp ? t.side : t.goals < t.opp ? (t.side === "home" ? "away" : "home") : null);
+      if (winnerSide && winnerSide === t.side) winPts = pot;
+    } else {
+      if (t.goals > t.opp) winPts = pot;
+      else if (t.goals === t.opp) winPts = pot / 2;
+    }
+    // Goal points use the score we were handed; for knockout that's FT+ET
+    // (penalty shootout goals are excluded by parseOpenfootballScore).
     const goalPts = t.goals * pot;
     let multiplier = 1;
     if (m.stage === "group" && player) {
