@@ -1301,11 +1301,167 @@ type ProjectedSlot =
   | { team: null; description: string; confidence?: number };
 
 
-function projectR32Slots(): ProjectedSlot[][] {
-  return KNOCKOUT_MATCHES.filter((match) => match.stage === "R32").map((match) => [
-    { team: match.home, projected: false, confidence: 1 },
-    { team: match.away, projected: false, confidence: 1 },
-  ]);
+// ---------- Bracket structure (openfootball M73–M104) ----------
+// Each match's two slot codes from the openfootball worldcup26 spec.
+const BRACKET_LINKS: Record<string, [string, string]> = {
+  "R32-1":  ["2A", "2B"],
+  "R32-2":  ["1E", "3A/B/C/D/F"],
+  "R32-3":  ["1F", "2C"],
+  "R32-4":  ["1C", "2F"],
+  "R32-5":  ["1I", "3C/D/F/G/H"],
+  "R32-6":  ["2E", "2I"],
+  "R32-7":  ["1A", "3C/E/F/H/I"],
+  "R32-8":  ["1L", "3E/H/I/J/K"],
+  "R32-9":  ["1D", "3B/E/F/I/J"],
+  "R32-10": ["1G", "3A/E/H/I/J"],
+  "R32-11": ["2K", "2L"],
+  "R32-12": ["1H", "2J"],
+  "R32-13": ["1B", "3E/F/G/I/J"],
+  "R32-14": ["1J", "2H"],
+  "R32-15": ["1K", "3D/E/I/J/L"],
+  "R32-16": ["2D", "2G"],
+  "R16-1":  ["W74", "W77"],
+  "R16-2":  ["W73", "W75"],
+  "R16-3":  ["W76", "W78"],
+  "R16-4":  ["W79", "W80"],
+  "R16-5":  ["W83", "W84"],
+  "R16-6":  ["W81", "W82"],
+  "R16-7":  ["W86", "W88"],
+  "R16-8":  ["W85", "W87"],
+  "QF-1":   ["W89", "W90"],
+  "QF-2":   ["W93", "W94"],
+  "QF-3":   ["W91", "W92"],
+  "QF-4":   ["W95", "W96"],
+  "SF-1":   ["W97", "W98"],
+  "SF-2":   ["W99", "W100"],
+  "3rd-1":  ["L101", "L102"],
+  "Final-1": ["W101", "W102"],
+};
+
+function knockoutIdForApiNum(num: number): string | undefined {
+  if (num >= 73 && num <= 88) return `R32-${num - 72}`;
+  if (num >= 89 && num <= 96) return `R16-${num - 88}`;
+  if (num >= 97 && num <= 100) return `QF-${num - 96}`;
+  if (num >= 101 && num <= 102) return `SF-${num - 100}`;
+  if (num === 103) return "3rd-1";
+  if (num === 104) return "Final-1";
+  return undefined;
+}
+
+// Greedy assignment of best-third teams into the openfootball cluster slots.
+// Returns a map from R32 matchId -> assigned third-place team (or null if
+// the third-place picture is not yet fully decided).
+function computeClusterAssignments(
+  standings: Record<GroupLetter, GroupStanding>,
+): Record<string, string | null> {
+  type ThirdInfo = { team: string; group: GroupLetter; pts: number; gd: number; gf: number; elo: number };
+  const thirds: ThirdInfo[] = [];
+  for (const g of GROUP_LETTERS) {
+    const team = standings[g].order[2];
+    if (!team) continue;
+    const s = standings[g].stats[team];
+    thirds.push({
+      team, group: g,
+      pts: s.pts, gd: s.gf - s.ga, gf: s.gf,
+      elo: teamElo(team),
+    });
+  }
+  thirds.sort((a, b) =>
+    b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || b.elo - a.elo,
+  );
+  const top8Groups = new Set(thirds.slice(0, 8).map((t) => t.group));
+  const allGroupsComplete = GROUP_LETTERS.every((g) => standings[g].allPlayed);
+
+  // Gather cluster slots in R32-match order (R32-2, -5, -7, -8, -9, -10, -13, -15)
+  const clusterSlots: Array<{ matchId: string; groups: GroupLetter[] }> = [];
+  for (const m of KNOCKOUT_MATCHES) {
+    if (m.stage !== "R32") continue;
+    const link = BRACKET_LINKS[m.id];
+    if (!link) continue;
+    for (const code of link) {
+      if (code.startsWith("3") && code.includes("/")) {
+        clusterSlots.push({
+          matchId: m.id,
+          groups: code.slice(1).split("/") as GroupLetter[],
+        });
+        break;
+      }
+    }
+  }
+
+  const result: Record<string, string | null> = {};
+  if (!allGroupsComplete) {
+    for (const s of clusterSlots) result[s.matchId] = null;
+    return result;
+  }
+  const used = new Set<GroupLetter>();
+  for (const slot of clusterSlots) {
+    let pick: ThirdInfo | undefined;
+    for (const t of thirds) {
+      if (!top8Groups.has(t.group)) continue;
+      if (used.has(t.group)) continue;
+      if (!slot.groups.includes(t.group)) continue;
+      pick = t;
+      break;
+    }
+    result[slot.matchId] = pick?.team ?? null;
+    if (pick) used.add(pick.group);
+  }
+  return result;
+}
+
+function resolveSlotCode(
+  code: string,
+  standings: Record<GroupLetter, GroupStanding>,
+  winners: Record<string, ProjectedSlot>,
+  losers: Record<string, ProjectedSlot>,
+  clusters: Record<string, string | null>,
+  thisMatchId: string,
+): ProjectedSlot {
+  const gp = /^([123])([A-L])$/.exec(code);
+  if (gp) {
+    const pos = parseInt(gp[1]);
+    const g = gp[2] as GroupLetter;
+    const standing = standings[g];
+    const team = standing?.order[pos - 1];
+    if (!team) return { team: null, description: code };
+    return {
+      team,
+      projected: !standing.allPlayed,
+      group: g,
+      role: pos === 1 ? "winner" : pos === 2 ? "runner-up" : "3rd-place",
+      confidence: 1,
+    };
+  }
+  if (code.startsWith("3") && code.includes("/")) {
+    const assigned = clusters[thisMatchId];
+    if (!assigned) return { team: null, description: code };
+    let g: GroupLetter | undefined;
+    for (const gl of GROUP_LETTERS) {
+      if (GROUPS[gl].includes(assigned)) { g = gl; break; }
+    }
+    const allComplete = GROUP_LETTERS.every((gl) => standings[gl].allPlayed);
+    return {
+      team: assigned,
+      projected: !allComplete,
+      group: g,
+      role: "3rd-place",
+      confidence: 1,
+    };
+  }
+  const wm = /^W(\d+)$/.exec(code);
+  if (wm) {
+    const id = knockoutIdForApiNum(parseInt(wm[1]));
+    const w = id ? winners[id] : undefined;
+    return w ?? { team: null, description: `Winner M${wm[1]}` };
+  }
+  const lm = /^L(\d+)$/.exec(code);
+  if (lm) {
+    const id = knockoutIdForApiNum(parseInt(lm[1]));
+    const l = id ? losers[id] : undefined;
+    return l ?? { team: null, description: `Loser M${lm[1]}` };
+  }
+  return { team: null, description: code };
 }
 
 // ---------- Later-round projection ----------
