@@ -1801,13 +1801,23 @@ function ProjectedKnockoutCard({
   label: string;
 }) {
   const anyProjected = slots.some((s) => s.team === null || s.projected);
-  // Overall matchup confidence = product of both slot confidences
   const matchConf = slots.reduce<number | null>((acc, s) => {
     const c = s.confidence;
     if (c === undefined) return acc;
     return acc === null ? c : acc * c;
   }, null);
   const showMatchConf = anyProjected && matchConf !== null && matchConf < 0.9999;
+  const ds = displayScore(match.id);
+  const of = useOFEnrichment(match.id);
+  const aet = !!of?.wentToExtraTime;
+  const pens = of?.wentToPenalties
+    ? { home: of.penaltiesHome ?? 0, away: of.penaltiesAway ?? 0 }
+    : null;
+  let winnerSide: "home" | "away" | null = of?.winner ?? null;
+  if (!winnerSide && ds?.played) {
+    if (ds.home > ds.away) winnerSide = "home";
+    else if (ds.away > ds.home) winnerSide = "away";
+  }
   return (
     <div
       className={`rounded-md p-2 space-y-1 ${anyProjected ? "border border-dashed border-muted-foreground/40 bg-secondary/20" : "bg-secondary/40 border border-transparent"}`}
@@ -1825,8 +1835,31 @@ function ProjectedKnockoutCard({
       </div>
       <div className="text-[10px] text-muted-foreground">{matchLocation(match)}</div>
       <div className="space-y-1">
-        {slots.map((s, i) => <ProjectedSlotRow key={i} slot={s} />)}
+        {slots.map((s, i) => (
+          <ProjectedSlotRow
+            key={i}
+            slot={s}
+            isWinner={
+              (i === 0 && winnerSide === "home") ||
+              (i === 1 && winnerSide === "away")
+            }
+          />
+        ))}
       </div>
+      {ds?.played && (
+        <div className="pt-1 border-t border-border/40 text-[11px] font-bold text-center tabular-nums">
+          <span className="text-primary">{ds.home}–{ds.away}</span>
+          {aet && <span className="ml-1 text-[9px] text-muted-foreground font-bold">(AET)</span>}
+          {pens && (
+            <div className="text-[9px] text-muted-foreground font-semibold">
+              Pens:{" "}
+              <span className={pens.home > pens.away ? "text-emerald-300 font-extrabold" : ""}>{pens.home}</span>
+              <span className="mx-0.5">–</span>
+              <span className={pens.away > pens.home ? "text-emerald-300 font-extrabold" : ""}>{pens.away}</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
