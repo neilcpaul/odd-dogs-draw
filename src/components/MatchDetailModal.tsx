@@ -76,7 +76,7 @@ function MatchDetailModal({ matchId, onClose }: { matchId: string | null; onClos
   const timeText = dateObj.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   const locationText = [match.venue, match.city].filter(Boolean).join(", ");
 
-  const of = useOFEnrichment(matchId ?? "");
+
 
   // Scorer source priority:
   // 1) worldcup26.ir (already formatted "Player MM'")
